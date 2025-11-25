@@ -1,0 +1,250 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum TipoEstatus {
+  EQUIPO
+  PERSONAL
+  UBICACION
+}
+
+enum AccionBitacora {
+  ASIGNAR
+  DEVOLVER
+  CAMBIO_ESTATUS
+  REPARACION_IN
+  REPARACION_OUT
+  CREAR
+  ELIMINAR
+  MODIFICACION
+}
+
+model Rol {
+  id       Int       @id @default(autoincrement())
+  nombre   String    @unique // 'employee','admin','master'
+  usuarios Usuario[]
+}
+
+model Estatus {
+  id               Int                  @id @default(autoincrement())
+  tipo             TipoEstatus
+  nombre           String
+  ubicaciones      Ubicacion[]
+  lideres          Lider[]
+  equipos          Equipo[]
+  bitacorasOrigen  BitacoraMovimiento[] @relation("EstatusOrigen")
+  bitacorasDestino BitacoraMovimiento[] @relation("EstatusDestino")
+
+  @@unique([tipo, nombre])
+}
+
+model Ubicacion {
+  id        Int        @id @default(autoincrement())
+  nombre    String     @unique
+  estatusId Int
+  estatus   Estatus    @relation(fields: [estatusId], references: [id])
+  notas     String?
+
+  centros   Centro[]
+  equipos   Equipo[]
+}
+
+model Puesto {
+  id       Int       @id @default(autoincrement())
+  nombre   String
+  notas    String?
+  lideres  Lider[]
+  usuarios Usuario[]
+}
+
+model Centro {
+  id          Int        @id @default(autoincrement())
+  nombre      String
+  ubicacionId Int
+  ubicacion   Ubicacion  @relation(fields: [ubicacionId], references: [id])
+  notas       String?
+
+  lideres     Lider[]
+  usuarios    Usuario[]
+}
+
+model Lider {
+  id              Int       @id @default(autoincrement())
+  nombre          String
+  apellidoPaterno String?
+  apellidoMaterno String?
+  email           String    @unique
+  telefono        String?
+  centroId        Int
+  puestoId        Int
+  estatusId       Int
+
+  centro          Centro    @relation(fields: [centroId], references: [id])
+  puesto          Puesto    @relation(fields: [puestoId], references: [id])
+  estatus         Estatus   @relation(fields: [estatusId], references: [id])
+
+  usuarios        Usuario[]
+}
+
+model Usuario {
+  id               Int       @id @default(autoincrement())
+  nombre           String
+  apellidoPaterno  String?
+  apellidoMaterno  String?
+  email            String    @unique
+  telefono         String?
+  liderId          Int
+  puestoId         Int
+  centroId         Int
+  rolId            Int
+  hashPassword     String
+  activo           Boolean   @default(true)
+  ultimoLogin      DateTime?
+  creadoEn         DateTime  @default(now())
+
+  lider            Lider     @relation(fields: [liderId], references: [id])
+  puesto           Puesto    @relation(fields: [puestoId], references: [id])
+  centro           Centro    @relation(fields: [centroId], references: [id])
+  rol              Rol       @relation(fields: [rolId], references: [id])
+
+  asignaciones       Asignacion[]          @relation("AsignacionesUsuario")
+  asignacionesHechas Asignacion[]          @relation("AsignacionesHechas")
+  bitacoras          BitacoraMovimiento[]  @relation("UsuarioInvolucrado")
+  bitacorasRealizadas BitacoraMovimiento[] @relation("UsuarioRealiza")
+}
+
+model Marca {
+  id       Int         @id @default(autoincrement())
+  nombre   String      @unique
+  activo   Boolean     @default(true)
+  logoUrl  String?
+  notas    String?
+
+  tipos    MarcaTipo[]
+}
+
+
+model TipoEquipo {
+  id         Int         @id @default(autoincrement())
+  nombre     String      @unique  // Impresora, AP, Laptop, etc.
+  equipos    Equipo[]
+  marcaTipos MarcaTipo[]
+}
+
+model MarcaTipo {
+  marcaId Int
+  tipoId  Int
+
+  marca   Marca      @relation(fields: [marcaId], references: [id])
+  tipo    TipoEquipo @relation(fields: [tipoId], references: [id])
+
+  modelos Modelo[]
+
+  @@id([marcaId, tipoId])
+}
+
+model Modelo {
+  id       Int       @id @default(autoincrement())
+  marcaId  Int
+  tipoId   Int
+  nombre   String
+  activo   Boolean   @default(true)
+  notas    String?
+
+  marcaTipo MarcaTipo @relation(fields: [marcaId, tipoId], references: [marcaId, tipoId])
+
+  equipos   Equipo[]
+
+  @@unique([marcaId, tipoId, nombre])
+}
+
+model Color {
+  id         Int              @id @default(autoincrement())
+  nombre     String           @unique
+  consumibles EquipoConsumible[]
+}
+
+model Equipo {
+  id             Int       @id @default(autoincrement())
+  tipoId         Int
+  modeloId       Int?
+  ubicacionId    Int?
+  estatusId      Int
+  numeroSerie    String?   @unique
+  ipFija         String?
+  puertoEthernet String?
+  notas          String?
+
+  tipo       TipoEquipo @relation(fields: [tipoId], references: [id])
+  modelo     Modelo?    @relation(fields: [modeloId], references: [id])
+  ubicacion  Ubicacion? @relation(fields: [ubicacionId], references: [id])
+  estatus    Estatus    @relation(fields: [estatusId], references: [id])
+
+  sim        EquipoSim?
+  consumible EquipoConsumible?
+
+  asignaciones Asignacion[]
+  bitacoras    BitacoraMovimiento[]
+
+  @@index([estatusId])
+  @@index([tipoId])
+  @@index([ubicacionId])
+}
+
+model EquipoSim {
+  equipoId       Int    @id
+  numeroAsignado String @unique
+  imei           String @unique
+
+  equipo         Equipo @relation(fields: [equipoId], references: [id], onDelete: Cascade)
+}
+
+model EquipoConsumible {
+  equipoId Int @id
+  colorId  Int
+
+  equipo   Equipo @relation(fields: [equipoId], references: [id], onDelete: Cascade)
+  color    Color  @relation(fields: [colorId], references: [id])
+}
+
+model Asignacion {
+  id          Int      @id @default(autoincrement())
+  equipoId    Int
+  usuarioId   Int
+  asignadoPor Int
+  asignadoEn  DateTime @default(now())
+  devueltoEn  DateTime?
+  rutaPdf     String?
+
+  equipo      Equipo  @relation(fields: [equipoId], references: [id])
+  usuario     Usuario @relation("AsignacionesUsuario", fields: [usuarioId], references: [id])
+  asignador   Usuario @relation("AsignacionesHechas", fields: [asignadoPor], references: [id])
+
+  @@unique([equipoId, asignadoEn], name: "uq_equipo_asignado_activo")
+  @@index([usuarioId])
+}
+
+model BitacoraMovimiento {
+  id              Int            @id @default(autoincrement())
+  equipoId        Int?
+  usuarioId       Int?
+  accion          AccionBitacora
+  estatusOrigenId Int?
+  estatusDestinoId Int?
+  realizadoPorId  Int
+  realizadoEn     DateTime       @default(now())
+  notas           String?
+
+  equipo          Equipo?        @relation(fields: [equipoId], references: [id])
+  usuario         Usuario?       @relation("UsuarioInvolucrado", fields: [usuarioId], references: [id])
+  estatusOrigen   Estatus?       @relation("EstatusOrigen", fields: [estatusOrigenId], references: [id])
+  estatusDestino  Estatus?       @relation("EstatusDestino", fields: [estatusDestinoId], references: [id])
+  realizadoPor    Usuario        @relation("UsuarioRealiza", fields: [realizadoPorId], references: [id])
+
+  @@index([equipoId])
+}
