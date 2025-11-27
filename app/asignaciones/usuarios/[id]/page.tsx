@@ -1,6 +1,7 @@
 import { GestionAsignacion } from "@/app/components/asignaciones/GestionAsignacion";
 import { prisma } from "@/lib/prisma";
 import { TipoEstatus } from "@prisma/client";
+import { getCurrentUser } from "@/lib/auth";
 
 async function getData(usuarioId: number) {
     const usuario = await prisma.usuario.findUnique({
@@ -45,15 +46,15 @@ export default async function GestionAsignacionPage({ params }: { params: Promis
 
     if (!data) return <div className="p-10 text-center">Usuario no encontrado</div>;
 
-    // Simulamos ID de usuario actual (en un sistema real vendría de la sesión)
-    // Buscamos un usuario admin o master para usar como 'asignadoPor'
-    const adminUser = await prisma.usuario.findFirst({
-        where: { rol: { nombre: { in: ['admin', 'master'] } } }
-    });
+    // Obtener usuario actual de la sesión
+    const currentUser = await getCurrentUser();
 
-    // Si no hay admin, usamos el primer usuario que encontremos, o 1 como fallback
-    const fallbackUser = await prisma.usuario.findFirst();
-    const currentUserId = adminUser?.id || fallbackUser?.id || 1;
+    // Si no hay sesión válida, redirigir a login (aunque el middleware debería proteger esto)
+    if (!currentUser) {
+        return <div className="p-10 text-center">Sesión no válida. Por favor inicie sesión nuevamente.</div>;
+    }
+
+    const currentUserId = currentUser.id;
 
     return (
         <div className="container mx-auto py-10">

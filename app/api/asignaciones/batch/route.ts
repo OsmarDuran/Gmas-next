@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generarPdfAsignacion } from "@/lib/pdf/generarPdfAsignacion";
 import { TipoEstatus } from "@prisma/client";
+import { registrarBitacora, AccionBitacora, SeccionBitacora } from "@/lib/bitacora";
 
 export async function POST(request: NextRequest) {
     try {
@@ -60,11 +61,20 @@ export async function POST(request: NextRequest) {
                     where: { id: asignacion.equipoId },
                     data: { estatusId: estatusDisponible.id }
                 });
+
+                // Bitácora Devolución
+                await registrarBitacora({
+                    accion: AccionBitacora.DEVOLVER,
+                    seccion: SeccionBitacora.ASIGNACIONES,
+                    elementoId: asignacion.equipoId,
+                    autorId: Number(asignadoPor),
+                    detalles: { asignacionId: asignacion.id, usuarioId: Number(usuarioId) }
+                });
             }
 
             // Asignar (Crear)
             for (const equipoId of aCrearIds) {
-                await tx.asignacion.create({
+                const nuevaAsignacion = await tx.asignacion.create({
                     data: {
                         usuarioId: Number(usuarioId),
                         equipoId,
@@ -75,39 +85,62 @@ export async function POST(request: NextRequest) {
                     where: { id: equipoId },
                     data: { estatusId: estatusAsignado.id }
                 });
+
+                // Bitácora Asignación
+                await registrarBitacora({
+                    accion: AccionBitacora.ASIGNAR,
+                    seccion: SeccionBitacora.ASIGNACIONES,
+                    elementoId: equipoId,
+                    autorId: Number(asignadoPor),
+                    detalles: { asignacionId: nuevaAsignacion.id, usuarioId: Number(usuarioId) }
+                });
             }
         });
 
-        // 5. Generar PDF con la lista FINAL de equipos
-        // Obtener datos completos para el PDF
-        const usuarioCompleto = await prisma.usuario.findUnique({
-            where: { id: Number(usuarioId) },
-            include: { puesto: true, centro: true }
-        });
+        // 5. Generar PDF SOLO si hay nuevas asignaciones
+        let rutaPdf = null;
+        if (aCrearIds.length > 0) {
+            // Obtener datos completos para el PDF
+            const usuarioCompleto = await prisma.usuario.findUnique({
+                where: { id: Number(usuarioId) },
+                include: { puesto: true, centro: true }
+            });
 
-        const equiposFinales = await prisma.equipo.findMany({
-            where: { id: { in: idsNuevos } },
-            include: {
-                tipo: true,
-                modelo: { include: { marcaTipo: { include: { marca: true } } } },
-                sim: true,
-                consumible: { include: { color: true } }
-            }
-        });
+            // Solo buscar los equipos NUEVOS para el PDF
+            const equiposNuevos = await prisma.equipo.findMany({
+                where: { id: { in: aCrearIds } },
+                include: {
+                    tipo: true,
+                    modelo: { include: { marcaTipo: { include: { marca: true } } } },
+                    sim: true,
+                    consumible: { include: { color: true } }
+                }
+            });
 
-        const encargadoUser = await prisma.usuario.findUnique({ where: { id: Number(asignadoPor) } });
+            const encargadoUser = await prisma.usuario.findUnique({ where: { id: Number(asignadoPor) } });
 
-        if (!usuarioCompleto || !encargadoUser) throw new Error("Usuario o Encargado no encontrado");
+            if (!usuarioCompleto || !encargadoUser) throw new Error("Usuario o Encargado no encontrado");
 
-        // Generar PDF
-        const rutaPdf = await generarPdfAsignacion(usuarioCompleto, equiposFinales, encargadoUser);
+            const usuarioParaPdf = {
+                ...usuarioCompleto,
+                puesto: usuarioCompleto.puesto!,
+                centro: usuarioCompleto.centro!
+            };
 
-        // Actualizar rutaPdf en todas las asignaciones activas de este usuario
-        // Esto asegura que si consultamos cualquier asignación activa, tenga el link al PDF consolidado más reciente
-        await prisma.asignacion.updateMany({
-            where: { usuarioId: Number(usuarioId), devueltoEn: null },
-            data: { rutaPdf }
-        });
+            // Generar PDF con solo los nuevos
+            rutaPdf = await generarPdfAsignacion(usuarioParaPdf, equiposNuevos, encargadoUser);
+
+            // Actualizar rutaPdf SOLO en las nuevas asignaciones
+            // Buscamos las asignaciones activas de estos equipos para este usuario
+            await prisma.asignacion.updateMany({
+                where: {
+                    usuarioId: Number(usuarioId),
+                    equipoId: { in: aCrearIds },
+                    devueltoEn: null
+                },
+                data: { rutaPdf }
+            });
+        }
 
         return NextResponse.json({ success: true, pdfUrl: rutaPdf });
 

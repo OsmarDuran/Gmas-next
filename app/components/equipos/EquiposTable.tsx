@@ -56,8 +56,8 @@ export function EquiposTable({ equipos }: EquiposTableProps) {
                             <td className="px-6 py-4">{equipo.ubicacion?.nombre || "-"}</td>
                             <td className="px-6 py-4">
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${equipo.estatus.nombre === 'Disponible' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                                        equipo.estatus.nombre === 'Asignado' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
-                                            'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+                                    equipo.estatus.nombre === 'Asignado' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
+                                        'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
                                     }`}>
                                     {equipo.estatus.nombre}
                                 </span>
@@ -79,6 +79,9 @@ export function EquiposTable({ equipos }: EquiposTableProps) {
                             <td className="px-6 py-4 flex gap-2">
                                 <Link href={`/equipos/${equipo.id}`} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
                                     <Eye className="w-4 h-4" />
+                                </Link>
+                                <Link href={`/equipos/${equipo.id}/editar`} className="text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-300">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" /></svg>
                                 </Link>
                             </td>
                         </tr>

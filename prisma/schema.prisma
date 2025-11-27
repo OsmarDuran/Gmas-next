@@ -13,16 +13,7 @@ enum TipoEstatus {
   UBICACION
 }
 
-enum AccionBitacora {
-  ASIGNAR
-  DEVOLVER
-  CAMBIO_ESTATUS
-  REPARACION_IN
-  REPARACION_OUT
-  CREAR
-  ELIMINAR
-  MODIFICACION
-}
+
 
 model Rol {
   id       Int       @id @default(autoincrement())
@@ -37,8 +28,7 @@ model Estatus {
   ubicaciones      Ubicacion[]
   lideres          Lider[]
   equipos          Equipo[]
-  bitacorasOrigen  BitacoraMovimiento[] @relation("EstatusOrigen")
-  bitacorasDestino BitacoraMovimiento[] @relation("EstatusDestino")
+
 
   @@unique([tipo, nombre])
 }
@@ -98,24 +88,23 @@ model Usuario {
   apellidoMaterno  String?
   email            String    @unique
   telefono         String?
-  liderId          Int
-  puestoId         Int
-  centroId         Int
+  liderId          Int?
+  puestoId         Int?
+  centroId         Int?
   rolId            Int
   hashPassword     String
   activo           Boolean   @default(true)
   ultimoLogin      DateTime?
   creadoEn         DateTime  @default(now())
 
-  lider            Lider     @relation(fields: [liderId], references: [id])
-  puesto           Puesto    @relation(fields: [puestoId], references: [id])
-  centro           Centro    @relation(fields: [centroId], references: [id])
+  lider            Lider?    @relation(fields: [liderId], references: [id])
+  puesto           Puesto?   @relation(fields: [puestoId], references: [id])
+  centro           Centro?   @relation(fields: [centroId], references: [id])
   rol              Rol       @relation(fields: [rolId], references: [id])
 
   asignaciones       Asignacion[]          @relation("AsignacionesUsuario")
   asignacionesHechas Asignacion[]          @relation("AsignacionesHechas")
-  bitacoras          BitacoraMovimiento[]  @relation("UsuarioInvolucrado")
-  bitacorasRealizadas BitacoraMovimiento[] @relation("UsuarioRealiza")
+  bitacoras          Bitacora[]
 }
 
 model Marca {
@@ -189,7 +178,7 @@ model Equipo {
   consumible EquipoConsumible?
 
   asignaciones Asignacion[]
-  bitacoras    BitacoraMovimiento[]
+
 
   @@index([estatusId])
   @@index([tipoId])
@@ -229,22 +218,18 @@ model Asignacion {
   @@index([usuarioId])
 }
 
-model BitacoraMovimiento {
-  id              Int            @id @default(autoincrement())
-  equipoId        Int?
-  usuarioId       Int?
-  accion          AccionBitacora
-  estatusOrigenId Int?
-  estatusDestinoId Int?
-  realizadoPorId  Int
-  realizadoEn     DateTime       @default(now())
-  notas           String?
+model Bitacora {
+  id          Int      @id @default(autoincrement())
+  accion      String
+  seccion     String
+  elementoId  Int?
+  detalles    Json?
+  autorId     Int
+  fecha       DateTime @default(now())
 
-  equipo          Equipo?        @relation(fields: [equipoId], references: [id])
-  usuario         Usuario?       @relation("UsuarioInvolucrado", fields: [usuarioId], references: [id])
-  estatusOrigen   Estatus?       @relation("EstatusOrigen", fields: [estatusOrigenId], references: [id])
-  estatusDestino  Estatus?       @relation("EstatusDestino", fields: [estatusDestinoId], references: [id])
-  realizadoPor    Usuario        @relation("UsuarioRealiza", fields: [realizadoPorId], references: [id])
+  autor       Usuario  @relation(fields: [autorId], references: [id])
 
-  @@index([equipoId])
+  @@index([seccion])
+  @@index([elementoId])
+  @@index([fecha])
 }

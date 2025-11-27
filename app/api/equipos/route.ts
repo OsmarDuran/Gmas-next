@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma, TipoEstatus } from "@prisma/client";
+import { registrarBitacora, AccionBitacora, SeccionBitacora } from "@/lib/bitacora";
+import { getCurrentUser } from "@/lib/auth";
 
 // GET /api/equipos
 // Permite filtros: ?tipoId=&estatusId=&ubicacionId=&search=&page=&limit=
@@ -225,6 +227,24 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+
+
+    // Registrar en Bitácora
+    const currentUser = await getCurrentUser();
+    if (currentUser) {
+      await registrarBitacora({
+        accion: AccionBitacora.CREAR,
+        seccion: SeccionBitacora.EQUIPOS,
+        elementoId: nuevoEquipo.id,
+        autorId: currentUser.id,
+        detalles: {
+          tipo: nuevoEquipo.tipo.nombre,
+          modelo: nuevoEquipo.modelo?.nombre,
+          serie: nuevoEquipo.numeroSerie
+        }
+      });
+    }
 
     return NextResponse.json(nuevoEquipo, { status: 201 });
   } catch (error: unknown) {

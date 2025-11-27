@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { registrarBitacora, AccionBitacora, SeccionBitacora } from "@/lib/bitacora";
+import { getCurrentUser } from "@/lib/auth";
 
 function getIdFromParams(params: { id?: string }): number | null {
   const raw = params.id;
@@ -15,9 +17,10 @@ function getIdFromParams(params: { id?: string }): number | null {
 // GET /api/usuarios/:id
 export async function GET(
   _request: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const id = getIdFromParams(context.params);
+  const params = await context.params;
+  const id = getIdFromParams(params);
   if (!id) {
     return NextResponse.json(
       { error: "ID inválido" },
@@ -57,9 +60,10 @@ export async function GET(
 // Body: campos opcionales; si envías password, se vuelve a hashear
 export async function PATCH(
   request: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const id = getIdFromParams(context.params);
+  const params = await context.params;
+  const id = getIdFromParams(params);
   if (!id) {
     return NextResponse.json(
       { error: "ID inválido" },
@@ -69,6 +73,11 @@ export async function PATCH(
 
   try {
     const body = await request.json();
+    const currentUser = await getCurrentUser();
+
+    if (!currentUser) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
 
     const {
       nombre,
@@ -101,9 +110,49 @@ export async function PATCH(
 
     if (typeof activo === "boolean") data.activo = activo;
 
+    // Validación de seguridad para contraseña
     if (typeof password === "string" && password.length > 0) {
+      // Solo el rol 'master' puede cambiar contraseñas
+      // Verificamos el rol del usuario actual en la BD
+      const currentUserWithRole = await prisma.usuario.findUnique({
+        where: { id: currentUser.id },
+        include: { rol: true }
+      });
+
+      if (currentUserWithRole?.rol.nombre !== 'master') {
+        return NextResponse.json(
+          { error: "Solo el usuario Master puede cambiar contraseñas." },
+          { status: 403 }
+        );
+      }
+
       const hashPassword = await bcrypt.hash(password, 10);
       data.hashPassword = hashPassword;
+    }
+
+    // Obtener usuario actual para comparar cambios
+    const usuarioActual = await prisma.usuario.findUnique({ where: { id } });
+    if (!usuarioActual) {
+      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+    }
+
+    const cambios: Record<string, { anterior: any; nuevo: any }> = {};
+
+    if (nombre !== undefined && nombre !== usuarioActual.nombre) cambios.nombre = { anterior: usuarioActual.nombre, nuevo: nombre };
+    if (apellidoPaterno !== undefined && apellidoPaterno !== usuarioActual.apellidoPaterno) cambios.apellidoPaterno = { anterior: usuarioActual.apellidoPaterno, nuevo: apellidoPaterno };
+    if (apellidoMaterno !== undefined && apellidoMaterno !== usuarioActual.apellidoMaterno) cambios.apellidoMaterno = { anterior: usuarioActual.apellidoMaterno, nuevo: apellidoMaterno };
+    if (email !== undefined && email !== usuarioActual.email) cambios.email = { anterior: usuarioActual.email, nuevo: email };
+    if (telefono !== undefined && telefono !== usuarioActual.telefono) cambios.telefono = { anterior: usuarioActual.telefono, nuevo: telefono };
+
+    if (liderId !== undefined && liderId !== usuarioActual.liderId) cambios.lider = { anterior: usuarioActual.liderId, nuevo: liderId };
+    if (puestoId !== undefined && puestoId !== usuarioActual.puestoId) cambios.puesto = { anterior: usuarioActual.puestoId, nuevo: puestoId };
+    if (centroId !== undefined && centroId !== usuarioActual.centroId) cambios.centro = { anterior: usuarioActual.centroId, nuevo: centroId };
+    if (rolId !== undefined && rolId !== usuarioActual.rolId) cambios.rol = { anterior: usuarioActual.rolId, nuevo: rolId };
+
+    if (activo !== undefined && activo !== usuarioActual.activo) cambios.activo = { anterior: usuarioActual.activo, nuevo: activo };
+
+    if (typeof password === "string" && password.length > 0) {
+      cambios.password = { anterior: "********", nuevo: "********" }; // No guardar hash, solo indicar cambio
     }
 
     const usuarioActualizado = await prisma.usuario.update({
@@ -116,6 +165,17 @@ export async function PATCH(
         lider: true,
       },
     });
+
+    // Bitácora
+    if (Object.keys(cambios).length > 0) {
+      await registrarBitacora({
+        accion: AccionBitacora.MODIFICAR,
+        seccion: SeccionBitacora.USUARIOS,
+        elementoId: usuarioActualizado.id,
+        autorId: currentUser.id,
+        detalles: { cambios }
+      });
+    }
 
     return NextResponse.json(usuarioActualizado);
   } catch (error: unknown) {
@@ -143,12 +203,12 @@ export async function PATCH(
 }
 
 // DELETE /api/usuarios/:id
-// Ojo: esto BORRA el registro. Si prefieres baja lógica, usa PATCH con activo=false.
 export async function DELETE(
   _request: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const id = getIdFromParams(context.params);
+  const params = await context.params;
+  const id = getIdFromParams(params);
   if (!id) {
     return NextResponse.json(
       { error: "ID inválido" },
@@ -157,9 +217,21 @@ export async function DELETE(
   }
 
   try {
-    await prisma.usuario.delete({
+    const usuarioEliminado = await prisma.usuario.delete({
       where: { id },
     });
+
+    // Bitácora
+    const currentUser = await getCurrentUser();
+    if (currentUser) {
+      await registrarBitacora({
+        accion: AccionBitacora.ELIMINAR,
+        seccion: SeccionBitacora.USUARIOS,
+        elementoId: id,
+        autorId: currentUser.id,
+        detalles: { nombre: usuarioEliminado.nombre, email: usuarioEliminado.email }
+      });
+    }
 
     return NextResponse.json(
       { message: "Usuario eliminado correctamente" },

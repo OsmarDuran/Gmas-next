@@ -18,8 +18,8 @@ type EquipoCompleto = Equipo & {
 };
 
 type UsuarioCompleto = Usuario & {
-    puesto: Puesto;
-    centro: Centro;
+    puesto: Puesto | null;
+    centro: Centro | null;
 };
 
 interface GestionAsignacionProps {
@@ -155,8 +155,8 @@ export function GestionAsignacion({ usuario, equiposAsignadosIniciales, estatusD
             <button
                 onClick={() => action === 'add' ? asignarEquipo(equipo) : desasignarEquipo(equipo)}
                 className={`p-2 rounded-full transition-colors ${action === 'add'
-                        ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400'
-                        : 'bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400'
+                    ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400'
+                    : 'bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400'
                     }`}
             >
                 {action === 'add' ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
@@ -165,26 +165,34 @@ export function GestionAsignacion({ usuario, equiposAsignadosIniciales, estatusD
     );
 
     if (success) {
+        const isOnlyDevolucion = !pdfUrl;
+
         return (
             <div className="flex flex-col items-center justify-center p-10 bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 shadow-sm text-center">
-                <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-6 text-green-600 dark:text-green-400">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-6 ${isOnlyDevolucion ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400' : 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'}`}>
                     <CheckCircle className="w-8 h-8" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">¡Asignación Guardada!</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                    {isOnlyDevolucion ? '¡Desasignación Completada!' : '¡Asignación Guardada!'}
+                </h2>
                 <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md">
-                    Los cambios se han registrado correctamente y se ha generado el acta de resguardo actualizada.
+                    {isOnlyDevolucion
+                        ? 'Los equipos han sido desasignados y devueltos al inventario correctamente.'
+                        : 'Los cambios se han registrado correctamente y se ha generado el acta de resguardo actualizada.'}
                 </p>
 
                 <div className="flex gap-4">
-                    <a
-                        href={pdfUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-                    >
-                        <FileText className="w-5 h-5" />
-                        Descargar Acta PDF
-                    </a>
+                    {!isOnlyDevolucion && (
+                        <a
+                            href={pdfUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                        >
+                            <FileText className="w-5 h-5" />
+                            Descargar Acta PDF
+                        </a>
+                    )}
                     <button
                         onClick={() => router.push('/asignaciones/usuarios')}
                         className="px-6 py-3 border border-gray-300 dark:border-zinc-700 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
@@ -205,7 +213,7 @@ export function GestionAsignacion({ usuario, equiposAsignadosIniciales, estatusD
                         {usuario.nombre} {usuario.apellidoPaterno} {usuario.apellidoMaterno}
                     </h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {usuario.puesto.nombre} • {usuario.centro.nombre}
+                        {usuario.puesto?.nombre || 'Sin Puesto'} • {usuario.centro?.nombre || 'Sin Centro'}
                     </p>
                 </div>
                 <button

@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { registrarBitacora, AccionBitacora, SeccionBitacora } from "@/lib/bitacora";
+import { getCurrentUser } from "@/lib/auth";
 
 // GET /api/usuarios
 // Filtros opcionales: ?rolId=&activo=&centroId=&liderId=&search=
@@ -178,6 +180,18 @@ export async function POST(request: NextRequest) {
         lider: true,
       },
     });
+
+    // Bitácora
+    const currentUser = await getCurrentUser();
+    if (currentUser) {
+      await registrarBitacora({
+        accion: AccionBitacora.CREAR,
+        seccion: SeccionBitacora.USUARIOS,
+        elementoId: nuevoUsuario.id,
+        autorId: currentUser.id,
+        detalles: { nombre: nuevoUsuario.nombre, email: nuevoUsuario.email }
+      });
+    }
 
     return NextResponse.json(nuevoUsuario, { status: 201 });
   } catch (error: unknown) {

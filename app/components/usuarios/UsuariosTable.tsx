@@ -4,9 +4,9 @@ import { Edit, Trash2 } from "lucide-react";
 
 type UsuarioWithRelations = Usuario & {
     rol: Rol;
-    puesto: Puesto;
-    centro: Centro;
-    lider: Lider;
+    puesto: Puesto | null;
+    centro: Centro | null;
+    lider: Lider | null;
 };
 
 interface UsuariosTableProps {
@@ -35,8 +35,8 @@ export function UsuariosTable({ usuarios }: UsuariosTableProps) {
                                 {usuario.nombre} {usuario.apellidoPaterno} {usuario.apellidoMaterno}
                             </td>
                             <td className="px-6 py-4">{usuario.email}</td>
-                            <td className="px-6 py-4">{usuario.puesto.nombre}</td>
-                            <td className="px-6 py-4">{usuario.centro.nombre}</td>
+                            <td className="px-6 py-4">{usuario.puesto?.nombre || 'Sin Puesto'}</td>
+                            <td className="px-6 py-4">{usuario.centro?.nombre || 'Sin Centro'}</td>
                             <td className="px-6 py-4">{usuario.rol.nombre}</td>
                             <td className="px-6 py-4">
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${usuario.activo ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
@@ -45,9 +45,9 @@ export function UsuariosTable({ usuarios }: UsuariosTableProps) {
                                 </span>
                             </td>
                             <td className="px-6 py-4 flex gap-2">
-                                <button className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                                <Link href={`/usuarios/${usuario.id}/editar`} className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
                                     <Edit className="w-4 h-4" />
-                                </button>
+                                </Link>
                             </td>
                         </tr>
                     ))}

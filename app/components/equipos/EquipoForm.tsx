@@ -15,30 +15,31 @@ interface EquipoFormProps {
     ubicaciones: Ubicacion[];
     estatus: Estatus[];
     colores: Color[];
+    equipo?: any; // Equipo a editar (opcional)
 }
 
-export function EquipoForm({ tipos, marcas, ubicaciones, estatus, colores }: EquipoFormProps) {
+export function EquipoForm({ tipos, marcas, ubicaciones, estatus, colores, equipo }: EquipoFormProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
-    // Estados del formulario
-    const [tipoId, setTipoId] = useState<number | "">("");
-    const [marcaId, setMarcaId] = useState<number | "">("");
-    const [modeloId, setModeloId] = useState<number | "">("");
-    const [ubicacionId, setUbicacionId] = useState<number | "">("");
-    const [estatusId, setEstatusId] = useState<number | "">("");
-    const [numeroSerie, setNumeroSerie] = useState("");
-    const [notas, setNotas] = useState("");
+    // Estados del formulario (inicializados con equipo si existe)
+    const [tipoId, setTipoId] = useState<number | "">(equipo?.tipoId || "");
+    const [marcaId, setMarcaId] = useState<number | "">(equipo?.modelo?.marcaTipo?.marcaId || "");
+    const [modeloId, setModeloId] = useState<number | "">(equipo?.modeloId || "");
+    const [ubicacionId, setUbicacionId] = useState<number | "">(equipo?.ubicacionId || "");
+    const [estatusId, setEstatusId] = useState<number | "">(equipo?.estatusId || "");
+    const [numeroSerie, setNumeroSerie] = useState(equipo?.numeroSerie || "");
+    const [notas, setNotas] = useState(equipo?.notas || "");
 
     // Estados dinámicos
     const [modelos, setModelos] = useState<Modelo[]>([]);
     const [loadingModelos, setLoadingModelos] = useState(false);
 
     // Estados específicos
-    const [numeroAsignado, setNumeroAsignado] = useState("");
-    const [imei, setImei] = useState("");
-    const [colorId, setColorId] = useState<number | "">("");
+    const [numeroAsignado, setNumeroAsignado] = useState(equipo?.sim?.numeroAsignado || "");
+    const [imei, setImei] = useState(equipo?.sim?.imei || "");
+    const [colorId, setColorId] = useState<number | "">(equipo?.consumible?.colorId || "");
 
     // Lógica de tipos
     const selectedTipo = tipos.find(t => t.id === Number(tipoId));
@@ -91,15 +92,18 @@ export function EquipoForm({ tipos, marcas, ubicaciones, estatus, colores }: Equ
         }
 
         try {
-            const res = await fetch("/api/equipos", {
-                method: "POST",
+            const url = equipo ? `/api/equipos/${equipo.id}` : "/api/equipos";
+            const method = equipo ? "PATCH" : "POST";
+
+            const res = await fetch(url, {
+                method,
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
 
             if (!res.ok) {
                 const data = await res.json();
-                throw new Error(data.error || "Error al crear equipo");
+                throw new Error(data.error || "Error al guardar equipo");
             }
 
             router.push("/equipos");
@@ -174,10 +178,16 @@ export function EquipoForm({ tipos, marcas, ubicaciones, estatus, colores }: Equ
                         onChange={e => setModeloId(Number(e.target.value))}
                         className="w-full p-2 border rounded-lg dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                         disabled={!marcaId || loadingModelos}
+                        required
                     >
                         <option value="">{loadingModelos ? "Cargando..." : "Seleccionar..."}</option>
                         {modelos.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
                     </select>
+                    <div className="mt-1 text-right">
+                        <a href="/catalogos/modelos" target="_blank" className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                            + Crear nuevo modelo
+                        </a>
+                    </div>
                 </div>
 
                 {/* Ubicación */}

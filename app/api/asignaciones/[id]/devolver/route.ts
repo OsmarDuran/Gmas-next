@@ -1,7 +1,7 @@
-// app/api/asignaciones/[id]/devolver/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { AccionBitacora, TipoEstatus } from "@prisma/client";
+import { TipoEstatus } from "@prisma/client";
+import { AccionBitacora, SeccionBitacora } from "@/lib/bitacora";
 
 // PUT /api/asignaciones/[id]/devolver
 // Body: { "devueltoPor": usuarioId, "notas": "opcional" }
@@ -86,15 +86,19 @@ export async function PUT(
                 },
             });
 
-            await tx.bitacoraMovimiento.create({
+            await tx.bitacora.create({
                 data: {
-                    equipoId: asignacion.equipoId,
-                    usuarioId: asignacion.usuarioId,
                     accion: AccionBitacora.DEVOLVER,
-                    estatusOrigenId: estatusAsignado.id,
-                    estatusDestinoId: estatusDisponible.id,
-                    realizadoPorId: devueltoPor,
-                    notas: notas ?? "Equipo devuelto",
+                    seccion: SeccionBitacora.ASIGNACIONES,
+                    elementoId: asignacion.equipoId,
+                    autorId: devueltoPor,
+                    detalles: {
+                        asignacionId: asignacion.id,
+                        usuarioAnteriorId: asignacion.usuarioId,
+                        estatusOrigenId: estatusAsignado.id,
+                        estatusDestinoId: estatusDisponible.id,
+                        notas: notas ?? "Equipo devuelto",
+                    },
                 },
             });
 
