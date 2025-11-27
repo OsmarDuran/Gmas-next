@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { registrarBitacora, AccionBitacora, SeccionBitacora } from "@/lib/bitacora";
+import { getCurrentUser } from "@/lib/auth";
 
 // GET /api/centros?ubicacionId=&search=
 export async function GET(request: NextRequest) {
@@ -43,6 +45,11 @@ export async function GET(request: NextRequest) {
 // Body: { "nombre": "Centro Norte", "ubicacionId": 1, "notas": "opcional" }
 export async function POST(request: NextRequest) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { nombre, ubicacionId, notas } = body;
 
@@ -69,6 +76,14 @@ export async function POST(request: NextRequest) {
       include: {
         ubicacion: true,
       },
+    });
+
+    await registrarBitacora({
+      accion: AccionBitacora.CREAR,
+      seccion: SeccionBitacora.CENTROS,
+      elementoId: centro.id,
+      autorId: user.id,
+      detalles: { nombre: centro.nombre, ubicacion: centro.ubicacion.nombre }
     });
 
     return NextResponse.json(centro, { status: 201 });

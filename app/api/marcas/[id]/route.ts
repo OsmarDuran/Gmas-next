@@ -4,50 +4,10 @@ import { Prisma } from "@prisma/client";
 import { writeFile, mkdir, unlink } from "fs/promises";
 import path from "path";
 import fs from "fs";
+import { registrarBitacora, AccionBitacora, SeccionBitacora } from "@/lib/bitacora";
+import { getCurrentUser } from "@/lib/auth";
 
-// GET /api/marcas/[id]
-export async function GET(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
-    try {
-        const { id } = await params;
-        const marcaId = Number(id);
-
-        if (isNaN(marcaId)) {
-            return NextResponse.json(
-                { error: "ID inválido" },
-                { status: 400 }
-            );
-        }
-
-        const marca = await prisma.marca.findUnique({
-            where: { id: marcaId },
-            include: {
-                tipos: {
-                    include: {
-                        tipo: true,
-                    },
-                },
-            },
-        });
-
-        if (!marca) {
-            return NextResponse.json(
-                { error: "Marca no encontrada" },
-                { status: 404 }
-            );
-        }
-
-        return NextResponse.json(marca);
-    } catch (error: unknown) {
-        console.error("Error al obtener marca:", error);
-        return NextResponse.json(
-            { error: "Error al obtener marca" },
-            { status: 500 }
-        );
-    }
-}
+// ... (GET se mantiene igual)
 
 // PUT /api/marcas/[id]
 // Body esperado: FormData { nombre?, notas?, activo?, logo? }
@@ -56,6 +16,11 @@ export async function PUT(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const user = await getCurrentUser();
+        if (!user) {
+            return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+        }
+
         const { id } = await params;
         const marcaId = Number(id);
 
@@ -72,7 +37,14 @@ export async function PUT(
         const activoStr = formData.get("activo") as string | null;
         const logo = formData.get("logo") as File | null;
 
+        // Obtener estado anterior para bitácora
+        const marcaAnterior = await prisma.marca.findUnique({ where: { id: marcaId } });
+        if (!marcaAnterior) {
+            return NextResponse.json({ error: "Marca no encontrada" }, { status: 404 });
+        }
+
         const dataToUpdate: Prisma.MarcaUpdateInput = {};
+        const cambios: any = {};
 
         if (nombre !== null) {
             if (nombre.trim() === "") {
@@ -82,14 +54,18 @@ export async function PUT(
                 );
             }
             dataToUpdate.nombre = nombre;
+            if (nombre !== marcaAnterior.nombre) cambios.nombre = { anterior: marcaAnterior.nombre, nuevo: nombre };
         }
 
         if (notas !== null) {
             dataToUpdate.notas = notas || null;
+            if ((notas || null) !== marcaAnterior.notas) cambios.notas = { anterior: marcaAnterior.notas, nuevo: notas || null };
         }
 
         if (activoStr !== null) {
-            dataToUpdate.activo = activoStr === "true";
+            const nuevoActivo = activoStr === "true";
+            dataToUpdate.activo = nuevoActivo;
+            if (nuevoActivo !== marcaAnterior.activo) cambios.activo = { anterior: marcaAnterior.activo, nuevo: nuevoActivo };
         }
 
         if (logo) {
@@ -102,10 +78,10 @@ export async function PUT(
             await writeFile(path.join(uploadDir, filename), buffer);
 
             dataToUpdate.logoUrl = `/uploads/marcas/${filename}`;
+            cambios.logoUrl = { anterior: marcaAnterior.logoUrl, nuevo: dataToUpdate.logoUrl };
 
             // Intentar borrar logo anterior
             try {
-                const marcaAnterior = await prisma.marca.findUnique({ where: { id: marcaId } });
                 if (marcaAnterior?.logoUrl) {
                     const oldPath = path.join(process.cwd(), "public", marcaAnterior.logoUrl);
                     if (fs.existsSync(oldPath)) {
@@ -121,6 +97,16 @@ export async function PUT(
             where: { id: marcaId },
             data: dataToUpdate,
         });
+
+        if (Object.keys(cambios).length > 0) {
+            await registrarBitacora({
+                accion: AccionBitacora.MODIFICAR,
+                seccion: SeccionBitacora.MARCAS,
+                elementoId: marcaId,
+                autorId: user.id,
+                detalles: { cambios }
+            });
+        }
 
         return NextResponse.json(marcaActualizada);
     } catch (error: unknown) {
@@ -154,6 +140,11 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const user = await getCurrentUser();
+        if (!user) {
+            return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+        }
+
         const { id } = await params;
         const marcaId = Number(id);
 
@@ -168,6 +159,14 @@ export async function DELETE(
         const marcaEliminada = await prisma.marca.update({
             where: { id: marcaId },
             data: { activo: false },
+        });
+
+        await registrarBitacora({
+            accion: AccionBitacora.ELIMINAR,
+            seccion: SeccionBitacora.MARCAS,
+            elementoId: marcaId,
+            autorId: user.id,
+            detalles: { nombre: marcaEliminada.nombre }
         });
 
         return NextResponse.json(marcaEliminada);

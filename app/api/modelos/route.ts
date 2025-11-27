@@ -1,8 +1,8 @@
-// app/api/modelos/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-
+import { registrarBitacora, AccionBitacora, SeccionBitacora } from "@/lib/bitacora";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -49,6 +49,11 @@ export async function GET(request: NextRequest) {
 // Body: { "nombre": "Pavilion 15", "marcaId": 1, "tipoId": 3, "notas": "opcional" }
 export async function POST(request: NextRequest) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { nombre, marcaId, tipoId, notas } = body;
 
@@ -96,6 +101,18 @@ export async function POST(request: NextRequest) {
           },
         },
       },
+    });
+
+    await registrarBitacora({
+      accion: AccionBitacora.CREAR,
+      seccion: SeccionBitacora.MODELOS,
+      elementoId: modelo.id,
+      autorId: user.id,
+      detalles: {
+        nombre: modelo.nombre,
+        marca: modelo.marcaTipo.marca.nombre,
+        tipo: modelo.marcaTipo.tipo.nombre
+      }
     });
 
     return NextResponse.json(modelo, { status: 201 });

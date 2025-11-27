@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { registrarBitacora, AccionBitacora, SeccionBitacora } from "@/lib/bitacora";
+import { getCurrentUser } from "@/lib/auth";
 
 // GET /api/ubicaciones/[id]
 export async function GET(
@@ -33,6 +35,11 @@ export async function PUT(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const user = await getCurrentUser();
+        if (!user) {
+            return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+        }
+
         const { id } = await params;
         const ubicacionId = Number(id);
 
@@ -41,22 +48,47 @@ export async function PUT(
         const body = await request.json();
         const { nombre, notas, estatusId } = body;
 
+        // Obtener estado anterior
+        const ubicacionAnterior = await prisma.ubicacion.findUnique({ where: { id: ubicacionId } });
+        if (!ubicacionAnterior) {
+            return NextResponse.json({ error: "Ubicación no encontrada" }, { status: 404 });
+        }
+
         const dataToUpdate: Prisma.UbicacionUpdateInput = {};
+        const cambios: any = {};
 
         if (nombre !== undefined) {
             if (typeof nombre !== "string" || nombre.trim() === "") {
                 return NextResponse.json({ error: "Nombre inválido" }, { status: 400 });
             }
             dataToUpdate.nombre = nombre;
+            if (nombre !== ubicacionAnterior.nombre) cambios.nombre = { anterior: ubicacionAnterior.nombre, nuevo: nombre };
         }
 
-        if (notas !== undefined) dataToUpdate.notas = notas;
-        if (estatusId !== undefined) dataToUpdate.estatus = { connect: { id: estatusId } };
+        if (notas !== undefined) {
+            dataToUpdate.notas = notas;
+            if (notas !== ubicacionAnterior.notas) cambios.notas = { anterior: ubicacionAnterior.notas, nuevo: notas };
+        }
+
+        if (estatusId !== undefined) {
+            dataToUpdate.estatus = { connect: { id: estatusId } };
+            if (estatusId !== ubicacionAnterior.estatusId) cambios.estatusId = { anterior: ubicacionAnterior.estatusId, nuevo: estatusId };
+        }
 
         const ubicacionActualizada = await prisma.ubicacion.update({
             where: { id: ubicacionId },
             data: dataToUpdate,
         });
+
+        if (Object.keys(cambios).length > 0) {
+            await registrarBitacora({
+                accion: AccionBitacora.MODIFICAR,
+                seccion: SeccionBitacora.UBICACIONES,
+                elementoId: ubicacionId,
+                autorId: user.id,
+                detalles: { cambios }
+            });
+        }
 
         return NextResponse.json(ubicacionActualizada);
     } catch (error) {
@@ -76,6 +108,11 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const user = await getCurrentUser();
+        if (!user) {
+            return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+        }
+
         const { id } = await params;
         const ubicacionId = Number(id);
 
@@ -90,9 +127,22 @@ export async function DELETE(
             );
         }
 
+        // Obtener datos antes de eliminar
+        const ubicacion = await prisma.ubicacion.findUnique({ where: { id: ubicacionId } });
+
         const ubicacionEliminada = await prisma.ubicacion.delete({
             where: { id: ubicacionId },
         });
+
+        if (ubicacion) {
+            await registrarBitacora({
+                accion: AccionBitacora.ELIMINAR,
+                seccion: SeccionBitacora.UBICACIONES,
+                elementoId: ubicacionId,
+                autorId: user.id,
+                detalles: { nombre: ubicacion.nombre }
+            });
+        }
 
         return NextResponse.json(ubicacionEliminada);
     } catch (error) {

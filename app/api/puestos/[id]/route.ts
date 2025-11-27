@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { registrarBitacora, AccionBitacora, SeccionBitacora } from "@/lib/bitacora";
+import { getCurrentUser } from "@/lib/auth";
 
 // GET /api/puestos/[id]
 export async function GET(
@@ -32,6 +34,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
     const { id } = await params;
     const puestoId = Number(id);
 
@@ -40,21 +47,42 @@ export async function PUT(
     const body = await request.json();
     const { nombre, notas } = body;
 
+    // Obtener estado anterior
+    const puestoAnterior = await prisma.puesto.findUnique({ where: { id: puestoId } });
+    if (!puestoAnterior) {
+      return NextResponse.json({ error: "Puesto no encontrado" }, { status: 404 });
+    }
+
     const dataToUpdate: Prisma.PuestoUpdateInput = {};
+    const cambios: any = {};
 
     if (nombre !== undefined) {
       if (typeof nombre !== "string" || nombre.trim() === "") {
         return NextResponse.json({ error: "Nombre inválido" }, { status: 400 });
       }
       dataToUpdate.nombre = nombre;
+      if (nombre !== puestoAnterior.nombre) cambios.nombre = { anterior: puestoAnterior.nombre, nuevo: nombre };
     }
 
-    if (notas !== undefined) dataToUpdate.notas = notas;
+    if (notas !== undefined) {
+      dataToUpdate.notas = notas;
+      if (notas !== puestoAnterior.notas) cambios.notas = { anterior: puestoAnterior.notas, nuevo: notas };
+    }
 
     const puestoActualizado = await prisma.puesto.update({
       where: { id: puestoId },
       data: dataToUpdate,
     });
+
+    if (Object.keys(cambios).length > 0) {
+      await registrarBitacora({
+        accion: AccionBitacora.MODIFICAR,
+        seccion: SeccionBitacora.PUESTOS,
+        elementoId: puestoId,
+        autorId: user.id,
+        detalles: { cambios }
+      });
+    }
 
     return NextResponse.json(puestoActualizado);
   } catch (error) {
@@ -74,6 +102,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
     const { id } = await params;
     const puestoId = Number(id);
 
@@ -88,9 +121,22 @@ export async function DELETE(
       );
     }
 
+    // Obtener datos antes de eliminar
+    const puesto = await prisma.puesto.findUnique({ where: { id: puestoId } });
+
     const puestoEliminado = await prisma.puesto.delete({
       where: { id: puestoId },
     });
+
+    if (puesto) {
+      await registrarBitacora({
+        accion: AccionBitacora.ELIMINAR,
+        seccion: SeccionBitacora.PUESTOS,
+        elementoId: puestoId,
+        autorId: user.id,
+        detalles: { nombre: puesto.nombre }
+      });
+    }
 
     return NextResponse.json(puestoEliminado);
   } catch (error) {

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma, TipoEstatus } from "@prisma/client";
+import { registrarBitacora, AccionBitacora, SeccionBitacora } from "@/lib/bitacora";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function GET() {
   try {
@@ -25,6 +27,11 @@ export async function GET() {
 // Body: { "nombre": "Veracruz", "estatusId": 1, "notas": "opcional" }
 export async function POST(request: NextRequest) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { nombre, estatusId, notas } = body;
 
@@ -67,6 +74,14 @@ export async function POST(request: NextRequest) {
       include: {
         estatus: true,
       },
+    });
+
+    await registrarBitacora({
+      accion: AccionBitacora.CREAR,
+      seccion: SeccionBitacora.UBICACIONES,
+      elementoId: ubicacion.id,
+      autorId: user.id,
+      detalles: { nombre: ubicacion.nombre }
     });
 
     return NextResponse.json(ubicacion, { status: 201 });

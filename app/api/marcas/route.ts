@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { registrarBitacora, AccionBitacora, SeccionBitacora } from "@/lib/bitacora";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -51,6 +53,11 @@ export async function GET(request: NextRequest) {
 // Body esperado: FormData { nombre, notas?, logo? }
 export async function POST(request: NextRequest) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
     const formData = await request.formData();
     const nombre = formData.get("nombre") as string;
     const notas = formData.get("notas") as string | null;
@@ -84,6 +91,14 @@ export async function POST(request: NextRequest) {
         notas: notas ?? null,
         logoUrl,
       },
+    });
+
+    await registrarBitacora({
+      accion: AccionBitacora.CREAR,
+      seccion: SeccionBitacora.MARCAS,
+      elementoId: nuevaMarca.id,
+      autorId: user.id,
+      detalles: { nombre: nuevaMarca.nombre }
     });
 
     return NextResponse.json(nuevaMarca, { status: 201 });

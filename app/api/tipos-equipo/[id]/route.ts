@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { registrarBitacora, AccionBitacora, SeccionBitacora } from "@/lib/bitacora";
+import { getCurrentUser } from "@/lib/auth";
 
 // GET /api/tipos-equipo/[id]
 export async function GET(
@@ -46,6 +48,11 @@ export async function PUT(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const user = await getCurrentUser();
+        if (!user) {
+            return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+        }
+
         const { id } = await params;
         const tipoId = Number(id);
 
@@ -66,10 +73,30 @@ export async function PUT(
             );
         }
 
+        // Obtener estado anterior
+        const tipoAnterior = await prisma.tipoEquipo.findUnique({ where: { id: tipoId } });
+        if (!tipoAnterior) {
+            return NextResponse.json({ error: "Tipo de equipo no encontrado" }, { status: 404 });
+        }
+
         const tipoActualizado = await prisma.tipoEquipo.update({
             where: { id: tipoId },
             data: { nombre },
         });
+
+        if (tipoAnterior.nombre !== nombre) {
+            await registrarBitacora({
+                accion: AccionBitacora.MODIFICAR,
+                seccion: SeccionBitacora.TIPOS,
+                elementoId: tipoId,
+                autorId: user.id,
+                detalles: {
+                    cambios: {
+                        nombre: { anterior: tipoAnterior.nombre, nuevo: nombre }
+                    }
+                }
+            });
+        }
 
         return NextResponse.json(tipoActualizado);
     } catch (error: unknown) {
@@ -103,6 +130,11 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const user = await getCurrentUser();
+        if (!user) {
+            return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+        }
+
         const { id } = await params;
         const tipoId = Number(id);
 
@@ -113,13 +145,22 @@ export async function DELETE(
             );
         }
 
-        // Verificar si tiene equipos asociados antes de eliminar
-        // O dejar que falle por FK constraint (P2003)
-        // Prisma lanzará error si hay relaciones.
+        // Obtener datos antes de eliminar
+        const tipo = await prisma.tipoEquipo.findUnique({ where: { id: tipoId } });
 
         const tipoEliminado = await prisma.tipoEquipo.delete({
             where: { id: tipoId },
         });
+
+        if (tipo) {
+            await registrarBitacora({
+                accion: AccionBitacora.ELIMINAR,
+                seccion: SeccionBitacora.TIPOS,
+                elementoId: tipoId,
+                autorId: user.id,
+                detalles: { nombre: tipo.nombre }
+            });
+        }
 
         return NextResponse.json(tipoEliminado);
     } catch (error: unknown) {
