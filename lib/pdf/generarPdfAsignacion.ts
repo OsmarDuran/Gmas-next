@@ -1,12 +1,12 @@
 import PDFDocument from 'pdfkit';
 import fs from 'fs';
 import path from 'path';
-import { Usuario, Puesto, Centro, Equipo, TipoEquipo, Modelo, Marca, EquipoSim, EquipoConsumible, Color, MarcaTipo } from '@prisma/client';
+import { Usuario, Puesto, Centro, Equipo, TipoEquipo, Modelo, Marca, EquipoSim, EquipoConsumible, Color } from '@prisma/client';
 
 // Tipos necesarios para los datos
 type UsuarioCompleto = Usuario & {
-    puesto: Puesto;
-    centro: Centro;
+    puesto: Puesto | null;
+    centro: Centro | null;
 };
 
 type EquipoCompleto = Equipo & {
@@ -66,8 +66,8 @@ export async function generarPdfAsignacion(
 
     doc.fontSize(10).font(fontRegular);
     doc.text(`Nombre: ${nombreCompleto}`);
-    doc.text(`Puesto: ${usuario.puesto.nombre}`);
-    doc.text(`Centro de Costos: ${usuario.centro.nombre}`);
+    doc.text(`Puesto: ${usuario.puesto?.nombre || 'N/A'}`);
+    doc.text(`Centro de Costos: ${usuario.centro?.nombre || 'N/A'}`);
     doc.text(`Email: ${usuario.email}`);
     doc.moveDown(1.5);
 

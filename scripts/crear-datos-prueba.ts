@@ -6,14 +6,18 @@ const prisma = new PrismaClient();
 
 async function main() {
     // 1. Crear puesto
-    const puesto = await prisma.puesto.upsert({
-        where: { nombre: 'Desarrollador' },
-        update: {},
-        create: {
-            nombre: 'Desarrollador',
-            notas: 'Puesto de prueba',
-        },
+    let puesto = await prisma.puesto.findFirst({
+        where: { nombre: 'Desarrollador' }
     });
+
+    if (!puesto) {
+        puesto = await prisma.puesto.create({
+            data: {
+                nombre: 'Desarrollador',
+                notas: 'Puesto de prueba',
+            },
+        });
+    }
 
     console.log('Puesto creado:', puesto);
 
@@ -29,7 +33,7 @@ async function main() {
             centroId: 1, // Oficinas Centrales del seed
             rolId: 3, // master
             liderId: 1, // Se referencia a sí mismo (lo crearemos después)
-            password: hashPassword,
+            hashPassword: hashPassword,
             activo: true,
         },
     });
@@ -56,7 +60,7 @@ async function main() {
             centroId: 1,
             rolId: 2, // employee
             liderId: admin.id,
-            password: hashPassword2,
+            hashPassword: hashPassword2,
             activo: true,
         },
     });

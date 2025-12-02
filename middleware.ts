@@ -10,7 +10,7 @@ export async function middleware(request: NextRequest) {
     console.log(`Middleware: ${pathname}, Token: ${token ? "Yes" : "No"}`);
 
     // Rutas públicas (no requieren auth)
-    const publicRoutes = ["/login", "/register", "/api/auth/login", "/api/auth/register", "/"];
+    const publicRoutes = ["/login", "/register", "/api/auth/login", "/api/auth/register", "/", "/forgot-password", "/reset-password"];
 
     // Permitir acceso a recursos estáticos y api pública
     if (

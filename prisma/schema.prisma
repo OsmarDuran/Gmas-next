@@ -95,6 +95,8 @@ model Usuario {
   hashPassword     String
   activo           Boolean   @default(true)
   ultimoLogin      DateTime?
+  resetToken       String?   @unique
+  resetTokenExpiry DateTime?
   creadoEn         DateTime  @default(now())
 
   lider            Lider?    @relation(fields: [liderId], references: [id])
@@ -168,6 +170,7 @@ model Equipo {
   ipFija         String?
   puertoEthernet String?
   notas          String?
+  creadoEn       DateTime  @default(now())
 
   tipo       TipoEquipo @relation(fields: [tipoId], references: [id])
   modelo     Modelo?    @relation(fields: [modeloId], references: [id])

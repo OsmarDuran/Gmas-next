@@ -8,6 +8,7 @@ interface User {
     email: string;
     nombre: string;
     rol: string;
+    telefono?: string;
 }
 
 interface AuthContextType {

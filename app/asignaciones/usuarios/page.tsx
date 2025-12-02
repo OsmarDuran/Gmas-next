@@ -8,7 +8,8 @@ async function getUsuarios(searchParams: Record<string, string>) {
     if (!params.has('limit')) params.set('limit', '20');
     params.set('activo', 'true'); // Solo usuarios activos
 
-    const res = await fetch(`http://localhost:3000/api/usuarios?${params.toString()}`, {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const res = await fetch(`${baseUrl}/api/usuarios?${params.toString()}`, {
         cache: "no-store",
     });
     if (!res.ok) throw new Error("Error al cargar usuarios");

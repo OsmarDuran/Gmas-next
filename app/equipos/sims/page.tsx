@@ -4,7 +4,8 @@ import { Search } from "lucide-react";
 
 async function getTipoSimId() {
     try {
-        const res = await fetch('http://localhost:3000/api/tipos-equipo', { cache: 'force-cache' }); // Cachear esto es seguro
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const res = await fetch(`${baseUrl}/api/tipos-equipo`, { cache: 'force-cache' }); // Cachear esto es seguro
         if (!res.ok) return 12; // Fallback
         const tipos = await res.json();
         const sim = tipos.find((t: any) => t.nombre.toLowerCase().includes('sim'));
@@ -20,7 +21,8 @@ async function getSims(searchParams: Record<string, string>, tipoId: number) {
     if (!params.has('page')) params.set('page', '1');
     if (!params.has('limit')) params.set('limit', '20');
 
-    const res = await fetch(`http://localhost:3000/api/equipos?${params.toString()}`, {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const res = await fetch(`${baseUrl}/api/equipos?${params.toString()}`, {
         cache: "no-store",
     });
     if (!res.ok) throw new Error("Error al cargar SIMs");

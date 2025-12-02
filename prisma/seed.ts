@@ -1,12 +1,30 @@
 // prisma/seed.ts
-import {
-  PrismaClient,
-  TipoEstatus,
-  AccionBitacora,
-} from "@prisma/client";
+import { PrismaClient, TipoEstatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
+
+// Enums locales para evitar problemas de importación en seed
+const AccionBitacora = {
+  CREAR: "CREAR",
+  MODIFICAR: "MODIFICAR",
+  ELIMINAR: "ELIMINAR",
+  ASIGNAR: "ASIGNAR",
+  DEVOLVER: "DEVOLVER",
+  LOGIN: "LOGIN",
+} as const;
+
+const SeccionBitacora = {
+  EQUIPOS: "EQUIPOS",
+  ASIGNACIONES: "ASIGNACIONES",
+  USUARIOS: "USUARIOS",
+  MARCAS: "MARCAS",
+  MODELOS: "MODELOS",
+  UBICACIONES: "UBICACIONES",
+  CENTROS: "CENTROS",
+  PUESTOS: "PUESTOS",
+  TIPOS: "TIPOS",
+} as const;
 
 async function main() {
   console.log("Iniciando seed de GMAS 2.0...");
@@ -216,447 +234,394 @@ async function main() {
 
   const usuarioEmployee = await prisma.usuario.upsert({
     where: { email: "employee@gmas.local" },
-    update: {},
+    update: { hashPassword },
     create: {
       nombre: "Empleado",
-      apellidoPaterno: "Demo",
+      apellidoPaterno: "Prueba",
       email: "employee@gmas.local",
-      telefono: "2291111111",
+      hashPassword,
+      rolId: employee.id,
       liderId: liderPrincipal.id,
       puestoId: puestoSoporte.id,
       centroId: centroVeracruz.id,
-      rolId: employee.id,
-      hashPassword,
+      activo: true,
     },
   });
 
   const usuarioAdmin = await prisma.usuario.upsert({
     where: { email: "admin@gmas.local" },
-    update: {},
+    update: { hashPassword },
     create: {
       nombre: "Administrador",
-      apellidoPaterno: "Demo",
+      apellidoPaterno: "Sistema",
       email: "admin@gmas.local",
-      telefono: "2292222222",
+      hashPassword,
+      rolId: admin.id,
       liderId: liderPrincipal.id,
       puestoId: puestoJefeArea.id,
       centroId: centroVeracruz.id,
-      rolId: admin.id,
-      hashPassword,
+      activo: true,
     },
   });
 
   const usuarioMaster = await prisma.usuario.upsert({
     where: { email: "master@gmas.local" },
-    update: {},
+    update: { hashPassword },
     create: {
       nombre: "Master",
-      apellidoPaterno: "Demo",
+      apellidoPaterno: "User",
       email: "master@gmas.local",
-      telefono: "2293333333",
+      hashPassword,
+      rolId: master.id,
       liderId: liderPrincipal.id,
       puestoId: puestoDirectorTI.id,
       centroId: centroVeracruz.id,
-      rolId: master.id,
-      hashPassword,
+      activo: true,
     },
   });
 
-  console.log("Usuarios listos:", {
-    usuarioEmployee,
-    usuarioAdmin,
-    usuarioMaster,
+  console.log("Usuarios listos (password: 123456)");
+
+  // =====================================================
+  // 8. CATÁLOGOS DE EQUIPO
+  // =====================================================
+  // TIPOS
+  const tipo = await prisma.tipoEquipo.upsert({
+    where: { nombre: "Laptop" },
+    update: {},
+    create: { nombre: "Laptop" },
+  });
+  const tipoImpresora = await prisma.tipoEquipo.upsert({
+    where: { nombre: "Impresora" },
+    update: {},
+    create: { nombre: "Impresora" },
+  });
+  const tipoSim = await prisma.tipoEquipo.upsert({
+    where: { nombre: "SIM" },
+    update: {},
+    create: { nombre: "SIM" },
+  });
+  const tipoConsumible = await prisma.tipoEquipo.upsert({
+    where: { nombre: "Consumible" },
+    update: {},
+    create: { nombre: "Consumible" },
   });
 
-  // =====================================================
-  // 8. TIPOS DE EQUIPO
-  // =====================================================
-  const tiposNombres = [
-    "Laptop",
-    "Impresora",
-    "Access Point",
-    "Workstation",
-    "Monitor",
-    "Teléfono fijo",
-    "Celular",
-    "Tablet",
-    "Computadora móvil",
-    "Antena",
-    "Consumible",
-    "SIM",
-  ];
+  // MARCAS
+  const marca = await prisma.marca.upsert({
+    where: { nombre: "Dell" },
+    update: {},
+    create: { nombre: "Dell" },
+  });
+  const marcaHP = await prisma.marca.upsert({
+    where: { nombre: "HP" },
+    update: {},
+    create: { nombre: "HP" },
+  });
+  const marcaTelcel = await prisma.marca.upsert({
+    where: { nombre: "Telcel" },
+    update: {},
+    create: { nombre: "Telcel" },
+  });
+  const marcaGenerica = await prisma.marca.upsert({
+    where: { nombre: "Genérica" },
+    update: {},
+    create: { nombre: "Genérica" },
+  });
 
-  const tiposMap: Record<string, number> = {};
-
-  for (const nombre of tiposNombres) {
-    const tipo = await prisma.tipoEquipo.upsert({
-      where: { nombre },
-      update: {},
-      create: { nombre },
-    });
-    tiposMap[nombre] = tipo.id;
-  }
-
-  console.log("Tipos de equipo listos:", tiposMap);
-
-  const laptopId = tiposMap["Laptop"];
-  const impresoraId = tiposMap["Impresora"];
-  const apId = tiposMap["Access Point"];
-  const celularId = tiposMap["Celular"];
-  const simId = tiposMap["SIM"];
-  const consumibleId = tiposMap["Consumible"];
-
-  // =====================================================
-  // 9. MARCAS
-  // =====================================================
-  const marcasNombres = [
-    "HP",
-    "Dell",
-    "Lenovo",
-    "Canon",
-    "Epson",
-    "Cisco",
-    "Apple",
-    "Samsung",
-    "Telcel",
-  ];
-
-  const marcasMap: Record<string, number> = {};
-
-  for (const nombre of marcasNombres) {
-    const marca = await prisma.marca.upsert({
-      where: { nombre },
-      update: {},
-      create: { nombre, activo: true },
-    });
-    marcasMap[nombre] = marca.id;
-  }
-
-  console.log("Marcas listas:", marcasMap);
-
-  // =====================================================
-  // 10. RELACIÓN MARCA–TIPO (MarcaTipo)
-  // =====================================================
-
-  const relacionesMarcaTipo: Array<{ marca: string; tipoId: number }> = [
-    // Laptops
-    { marca: "HP", tipoId: laptopId },
-    { marca: "Dell", tipoId: laptopId },
-    { marca: "Lenovo", tipoId: laptopId },
-    { marca: "Apple", tipoId: laptopId },
-
-    // Impresoras
-    { marca: "HP", tipoId: impresoraId },
-    { marca: "Canon", tipoId: impresoraId },
-    { marca: "Epson", tipoId: impresoraId },
-
-    // Access Point
-    { marca: "Cisco", tipoId: apId },
-
-    // Celulares
-    { marca: "Samsung", tipoId: celularId },
-    { marca: "Apple", tipoId: celularId },
-
-    // Consumibles
-    { marca: "HP", tipoId: consumibleId },
-    { marca: "Canon", tipoId: consumibleId },
-    { marca: "Epson", tipoId: consumibleId },
-
-    // SIM
-    { marca: "Telcel", tipoId: simId },
-  ].filter((r) => r.tipoId); // por si algún tipo no existe
-
-  for (const rel of relacionesMarcaTipo) {
-    const marcaId = marcasMap[rel.marca];
-    if (!marcaId || !rel.tipoId) continue;
-
-    await prisma.marcaTipo.upsert({
-      where: {
-        marcaId_tipoId: {
-          marcaId,
-          tipoId: rel.tipoId,
-        },
+  // RELACIÓN MARCA - TIPO
+  await prisma.marcaTipo.upsert({
+    where: {
+      marcaId_tipoId: {
+        marcaId: marca.id,
+        tipoId: tipo.id,
       },
-      update: {},
-      create: {
-        marcaId,
-        tipoId: rel.tipoId,
+    },
+    update: {},
+    create: {
+      marcaId: marca.id,
+      tipoId: tipo.id,
+    },
+  });
+
+  await prisma.marcaTipo.upsert({
+    where: {
+      marcaId_tipoId: {
+        marcaId: marcaHP.id,
+        tipoId: tipoImpresora.id,
+      },
+    },
+    update: {},
+    create: {
+      marcaId: marcaHP.id,
+      tipoId: tipoImpresora.id,
+    },
+  });
+
+  // Telcel -> SIM
+  await prisma.marcaTipo.upsert({
+    where: {
+      marcaId_tipoId: {
+        marcaId: marcaTelcel.id,
+        tipoId: tipoSim.id,
+      },
+    },
+    update: {},
+    create: {
+      marcaId: marcaTelcel.id,
+      tipoId: tipoSim.id,
+    },
+  });
+
+  // Genérica -> Consumible
+  await prisma.marcaTipo.upsert({
+    where: {
+      marcaId_tipoId: {
+        marcaId: marcaGenerica.id,
+        tipoId: tipoConsumible.id,
+      },
+    },
+    update: {},
+    create: {
+      marcaId: marcaGenerica.id,
+      tipoId: tipoConsumible.id,
+    },
+  });
+
+  // MODELOS
+  const modelo = await prisma.modelo.findFirst({
+    where: { nombre: "Latitude 5420", marcaId: marca.id },
+  });
+
+  let modeloId = modelo?.id;
+  if (!modeloId) {
+    const creado = await prisma.modelo.create({
+      data: {
+        nombre: "Latitude 5420",
+        marcaId: marca.id,
+        tipoId: tipo.id,
       },
     });
+    modeloId = creado.id;
   }
 
-  console.log("Relaciones MarcaTipo listas");
-
-  // =====================================================
-  // 11. MODELOS
-  // =====================================================
-
-  const modelosMap: Record<string, number> = {};
-
-  async function ensureModelo(
-    marcaNombre: string,
-    tipoNombre: string,
-    modeloNombre: string
-  ) {
-    const marcaId = marcasMap[marcaNombre];
-    const tipoId = tiposMap[tipoNombre];
-    if (!marcaId || !tipoId) return;
-
-    const existente = await prisma.modelo.findFirst({
-      where: {
-        marcaId,
-        tipoId,
-        nombre: modeloNombre,
+  const modeloImpresora = await prisma.modelo.findFirst({
+    where: { nombre: "LaserJet Pro", marcaId: marcaHP.id },
+  });
+  let modeloImpresoraId = modeloImpresora?.id;
+  if (!modeloImpresoraId) {
+    const creado = await prisma.modelo.create({
+      data: {
+        nombre: "LaserJet Pro",
+        marcaId: marcaHP.id,
+        tipoId: tipoImpresora.id,
       },
     });
-
-    if (!existente) {
-      const creado = await prisma.modelo.create({
-        data: {
-          marcaId,
-          tipoId,
-          nombre: modeloNombre,
-          activo: true,
-        },
-      });
-      modelosMap[modeloNombre] = creado.id;
-    } else {
-      modelosMap[modeloNombre] = existente.id;
-    }
+    modeloImpresoraId = creado.id;
   }
 
-  // Laptops
-  await ensureModelo("HP", "Laptop", "HP ProBook 440 G9");
-  await ensureModelo("HP", "Laptop", "HP EliteBook 840");
-  await ensureModelo("Dell", "Laptop", "Latitude 5420");
-  await ensureModelo("Lenovo", "Laptop", "ThinkPad T14");
-  await ensureModelo("Apple", "Laptop", "MacBook Pro 14");
-
-  // Impresoras
-  await ensureModelo("HP", "Impresora", "LaserJet Pro M404");
-  await ensureModelo("Canon", "Impresora", "imageCLASS LBP226dw");
-  await ensureModelo("Epson", "Impresora", "EcoTank L3250");
-
-  // Access Points
-  await ensureModelo("Cisco", "Access Point", "Aironet 1830");
-
-  // Celulares
-  await ensureModelo("Samsung", "Celular", "Galaxy A54");
-  await ensureModelo("Apple", "Celular", "iPhone 13");
-
-  // SIM (Telcel)
-  await ensureModelo("Telcel", "SIM", "SIM Datos 4G");
-
-  console.log("Modelos listos");
-
   // =====================================================
-  // 12. COLORES (para consumibles)
+  // 9. EQUIPOS
   // =====================================================
-  const coloresNombres = ["Negro", "Cian", "Magenta", "Amarillo"];
+  const color = await prisma.color.upsert({
+    where: { nombre: "Negro" },
+    update: {},
+    create: { nombre: "Negro" },
+  });
 
-  const coloresMap: Record<string, number> = {};
-
-  for (const nombre of coloresNombres) {
-    const color = await prisma.color.upsert({
-      where: { nombre },
-      update: {},
-      create: { nombre },
-    });
-    coloresMap[nombre] = color.id;
-  }
-
-  console.log("Colores listos:", coloresMap);
-
-  // =====================================================
-  // 13. EQUIPOS
-  // =====================================================
-  // Laptop disponible
+  // 9.1 Equipo Laptop (Disponible)
   const equipoLaptopDisponible = await prisma.equipo.upsert({
-    where: { numeroSerie: "LAP-001" },
+    where: { numeroSerie: "DELL-001" },
     update: {},
     create: {
-      tipoId: tiposMap["Laptop"],
-      modeloId: modelosMap["HP ProBook 440 G9"],
-      ubicacionId: ubicacionCentral.id,
+      numeroSerie: "DELL-001",
+      tipoId: tipo.id,
+      modeloId: modeloId!,
       estatusId: estEquipoDisponible.id,
-      numeroSerie: "LAP-001",
-      ipFija: "192.168.0.10",
-      puertoEthernet: "0/1/1",
-      notas: "Laptop de prueba disponible",
+      ubicacionId: ubicacionCentral.id,
     },
   });
 
-  // Laptop asignada
+  // 9.2 Equipo Laptop (Asignado)
   const equipoLaptopAsignado = await prisma.equipo.upsert({
-    where: { numeroSerie: "LAP-002" },
+    where: { numeroSerie: "DELL-002" },
     update: {},
     create: {
-      tipoId: tiposMap["Laptop"],
-      modeloId: modelosMap["Dell Latitude 5420"]
-        ?? modelosMap["Latitude 5420"],
+      numeroSerie: "DELL-002",
+      tipoId: tipo.id,
+      modeloId: modeloId!,
+      estatusId: estEquipoAsignado.id, // Asignado
       ubicacionId: ubicacionCentral.id,
-      estatusId: estEquipoAsignado.id,
-      numeroSerie: "LAP-002",
-      ipFija: "192.168.0.11",
-      puertoEthernet: "0/1/2",
-      notas: "Laptop de prueba asignada",
     },
   });
 
-  // Impresora disponible
+  // 9.3 Impresora
   const equipoImpresora = await prisma.equipo.upsert({
-    where: { numeroSerie: "IMP-001" },
+    where: { numeroSerie: "HP-PRT-001" },
     update: {},
     create: {
-      tipoId: tiposMap["Impresora"],
-      modeloId: modelosMap["LaserJet Pro M404"],
-      ubicacionId: ubicacionCentral.id,
+      numeroSerie: "HP-PRT-001",
+      tipoId: tipoImpresora.id,
+      modeloId: modeloImpresoraId!,
       estatusId: estEquipoDisponible.id,
-      numeroSerie: "IMP-001",
-      notas: "Impresora láser monocromática",
+      ubicacionId: ubicacionCentral.id,
     },
   });
 
-  // SIM disponible
+  // 9.4 SIM (EquipoSim)
+  // Modelo genérico para SIM
+  const modeloSim = await prisma.modelo.findFirst({ where: { nombre: "Chip 4G", marcaId: marcaTelcel.id } });
+  let modeloSimId = modeloSim?.id;
+  if (!modeloSimId) {
+    const m = await prisma.modelo.create({ data: { nombre: "Chip 4G", marcaId: marcaTelcel.id, tipoId: tipoSim.id } });
+    modeloSimId = m.id;
+  }
+
   const equipoSim = await prisma.equipo.upsert({
-    where: { numeroSerie: "SIM-001" },
+    where: { numeroSerie: "SIM-5551234567" },
     update: {},
     create: {
-      tipoId: tiposMap["SIM"],
-      modeloId: modelosMap["SIM Datos 4G"],
-      ubicacionId: ubicacionCentral.id,
+      numeroSerie: "SIM-5551234567",
+      tipoId: tipoSim.id,
+      modeloId: modeloSimId!,
       estatusId: estEquipoDisponible.id,
-      numeroSerie: "SIM-001",
-      notas: "SIM de datos 4G Telcel",
+      ubicacionId: ubicacionCentral.id,
     },
   });
 
-  // Consumible disponible (un tóner, por ejemplo)
+  // 9.5 Consumible
+  const modeloConsumible = await prisma.modelo.findFirst({ where: { nombre: "Toner Negro", marcaId: marcaGenerica.id } });
+  let modeloConsumibleId = modeloConsumible?.id;
+  if (!modeloConsumibleId) {
+    const m = await prisma.modelo.create({ data: { nombre: "Toner Negro", marcaId: marcaGenerica.id, tipoId: tipoConsumible.id } });
+    modeloConsumibleId = m.id;
+  }
+
   const equipoConsumible = await prisma.equipo.upsert({
-    where: { numeroSerie: "TONER-001" },
+    where: { numeroSerie: "TONER-BLK-001" },
     update: {},
     create: {
-      tipoId: tiposMap["Consumible"],
-      modeloId: null,
-      ubicacionId: ubicacionCentral.id,
+      numeroSerie: "TONER-BLK-001",
+      tipoId: tipoConsumible.id,
+      modeloId: modeloConsumibleId!,
       estatusId: estEquipoDisponible.id,
-      numeroSerie: "TONER-001",
-      notas: "Tóner negro para impresora HP",
+      ubicacionId: ubicacionCentral.id,
     },
   });
 
-  console.log("Equipos base listos");
-
-  // =====================================================
-  // 14. EQUIPO_SIM y EQUIPO_CONSUMIBLE
-  // =====================================================
-
-  // SIM
+  // Detalles específicos (tablas 1:1)
+  // EquipoSim
   await prisma.equipoSim.upsert({
     where: { equipoId: equipoSim.id },
     update: {},
     create: {
       equipoId: equipoSim.id,
-      numeroAsignado: "2295550000",
-      imei: "357894561234567",
+      numeroAsignado: "5551234567",
+      imei: "123456789012345",
     },
   });
 
-  // Consumible (asociar color negro)
+  // EquipoConsumible
   await prisma.equipoConsumible.upsert({
     where: { equipoId: equipoConsumible.id },
     update: {},
     create: {
       equipoId: equipoConsumible.id,
-      colorId: coloresMap["Negro"],
+      colorId: color.id,
     },
   });
 
-  console.log("Subtipos de equipo listos");
+  console.log("Equipos listos");
 
   // =====================================================
-  // 15. ASIGNACIONES
+  // 10. ASIGNACIONES
   // =====================================================
-  // Creamos una asignación para equipoLaptopAsignado -> usuarioEmployee
-  const asignacionLaptop = await prisma.asignacion.create({
-    data: {
+  // Asignar la laptop DELL-002 al usuario Employee
+  // Verificar si ya existe asignación activa
+  const asignacionExistente = await prisma.asignacion.findFirst({
+    where: {
       equipoId: equipoLaptopAsignado.id,
-      usuarioId: usuarioEmployee.id,
-      asignadoPor: usuarioAdmin.id,
-      // asignadoEn: default now()
-      rutaPdf: null,
-    },
+      devueltoEn: null
+    }
   });
 
-  console.log("Asignaciones listas:", asignacionLaptop);
+  let asignacionLaptop;
+  if (!asignacionExistente) {
+    asignacionLaptop = await prisma.asignacion.create({
+      data: {
+        equipoId: equipoLaptopAsignado.id,
+        usuarioId: usuarioEmployee.id,
+        asignadoEn: new Date(),
+        asignadoPor: usuarioAdmin.id, // Admin asignó
+      },
+    });
+    console.log("Asignación lista:", asignacionLaptop);
+  } else {
+    asignacionLaptop = asignacionExistente;
+    console.log("Asignación ya existente:", asignacionLaptop);
+  }
+
 
   // =====================================================
-  // 16. BITÁCORA DE MOVIMIENTOS
+  // 11. BITÁCORA (Ejemplos)
   // =====================================================
-
-  // CREAR equipos
-  await prisma.bitacoraMovimiento.createMany({
+  await prisma.bitacora.createMany({
     data: [
       {
-        equipoId: equipoLaptopDisponible.id,
-        usuarioId: null,
         accion: AccionBitacora.CREAR,
-        estatusOrigenId: null,
-        estatusDestinoId: estEquipoDisponible.id,
-        realizadoPorId: usuarioAdmin.id,
-        notas: "Equipo creado en seed (Laptop disponible)",
+        seccion: SeccionBitacora.EQUIPOS,
+        elementoId: equipoLaptopDisponible.id,
+        autorId: usuarioAdmin.id,
+        detalles: { serie: "DELL-001", modelo: "Latitude 5420" },
       },
       {
-        equipoId: equipoLaptopAsignado.id,
-        usuarioId: null,
         accion: AccionBitacora.CREAR,
-        estatusOrigenId: null,
-        estatusDestinoId: estEquipoAsignado.id,
-        realizadoPorId: usuarioAdmin.id,
-        notas: "Equipo creado en seed (Laptop asignada)",
+        seccion: SeccionBitacora.EQUIPOS,
+        elementoId: equipoLaptopAsignado.id,
+        autorId: usuarioAdmin.id,
+        detalles: { serie: "DELL-002", modelo: "Latitude 5420" },
       },
       {
-        equipoId: equipoImpresora.id,
-        usuarioId: null,
         accion: AccionBitacora.CREAR,
-        estatusOrigenId: null,
-        estatusDestinoId: estEquipoDisponible.id,
-        realizadoPorId: usuarioAdmin.id,
-        notas: "Equipo creado en seed (Impresora)",
+        seccion: SeccionBitacora.EQUIPOS,
+        elementoId: equipoImpresora.id,
+        autorId: usuarioAdmin.id,
+        detalles: { serie: "HP-PRT-001", modelo: "LaserJet Pro" },
       },
       {
-        equipoId: equipoSim.id,
-        usuarioId: null,
         accion: AccionBitacora.CREAR,
-        estatusOrigenId: null,
-        estatusDestinoId: estEquipoDisponible.id,
-        realizadoPorId: usuarioAdmin.id,
-        notas: "Equipo creado en seed (SIM)",
+        seccion: SeccionBitacora.EQUIPOS,
+        elementoId: equipoSim.id,
+        autorId: usuarioAdmin.id,
+        detalles: { serie: "SIM-5551234567", numero: "5551234567" },
       },
       {
-        equipoId: equipoConsumible.id,
-        usuarioId: null,
         accion: AccionBitacora.CREAR,
-        estatusOrigenId: null,
-        estatusDestinoId: estEquipoDisponible.id,
-        realizadoPorId: usuarioAdmin.id,
-        notas: "Equipo creado en seed (Consumible)",
+        seccion: SeccionBitacora.EQUIPOS,
+        elementoId: equipoConsumible.id,
+        autorId: usuarioAdmin.id,
+        detalles: { serie: "TONER-BLK-001", tipo: "Toner" },
       },
     ],
   });
 
-  // ASIGNAR laptop
-  await prisma.bitacoraMovimiento.create({
-    data: {
-      equipoId: equipoLaptopAsignado.id,
-      usuarioId: usuarioEmployee.id,
-      accion: AccionBitacora.ASIGNAR,
-      estatusOrigenId: estEquipoDisponible.id,
-      estatusDestinoId: estEquipoAsignado.id,
-      realizadoPorId: usuarioAdmin.id,
-      notas: "Asignación inicial de laptop al empleado de prueba",
-    },
-  });
+  // Bitácora de la asignación
+  if (!asignacionExistente) {
+    await prisma.bitacora.create({
+      data: {
+        accion: AccionBitacora.ASIGNAR,
+        seccion: SeccionBitacora.ASIGNACIONES,
+        elementoId: asignacionLaptop.id,
+        autorId: usuarioAdmin.id,
+        detalles: {
+          usuarioId: usuarioEmployee.id,
+          estatusOrigenId: estEquipoDisponible.id,
+          estatusDestinoId: estEquipoAsignado.id,
+          notas: "Asignación inicial de laptop al empleado de prueba",
+        },
+      },
+    });
+  }
 
   console.log("Bitácora de movimientos lista");
 

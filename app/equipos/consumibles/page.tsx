@@ -4,7 +4,8 @@ import { Search } from "lucide-react";
 
 async function getTipoConsumibleId() {
     try {
-        const res = await fetch('http://localhost:3000/api/tipos-equipo', { cache: 'force-cache' });
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const res = await fetch(`${baseUrl}/api/tipos-equipo`, { cache: 'force-cache' });
         if (!res.ok) return 11;
         const tipos = await res.json();
         const consumible = tipos.find((t: any) =>
@@ -23,7 +24,8 @@ async function getConsumibles(searchParams: Record<string, string>, tipoId: numb
     if (!params.has('page')) params.set('page', '1');
     if (!params.has('limit')) params.set('limit', '20');
 
-    const res = await fetch(`http://localhost:3000/api/equipos?${params.toString()}`, {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const res = await fetch(`${baseUrl}/api/equipos?${params.toString()}`, {
         cache: "no-store",
     });
     if (!res.ok) throw new Error("Error al cargar Consumibles");

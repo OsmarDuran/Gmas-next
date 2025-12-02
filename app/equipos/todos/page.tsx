@@ -8,7 +8,8 @@ async function getEquipos(searchParams: Record<string, string>) {
     if (!params.has('page')) params.set('page', '1');
     if (!params.has('limit')) params.set('limit', '20');
 
-    const res = await fetch(`http://localhost:3000/api/equipos?${params.toString()}`, {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const res = await fetch(`${baseUrl}/api/equipos?${params.toString()}`, {
         cache: "no-store",
     });
     if (!res.ok) throw new Error("Error al cargar equipos");

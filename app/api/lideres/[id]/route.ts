@@ -14,9 +14,10 @@ function getIdFromParams(params: { id?: string }): number | null {
 // GET /api/lideres/:id
 export async function GET(
   _request: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const id = getIdFromParams(context.params);
+  const params = await context.params;
+  const id = getIdFromParams(params);
   if (!id) {
     return NextResponse.json({ error: "ID inválido" }, { status: 400 });
   }
@@ -53,9 +54,10 @@ export async function GET(
 // PATCH /api/lideres/:id
 export async function PATCH(
   request: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const id = getIdFromParams(context.params);
+  const params = await context.params;
+  const id = getIdFromParams(params);
   if (!id) {
     return NextResponse.json({ error: "ID inválido" }, { status: 400 });
   }
@@ -123,9 +125,10 @@ export async function PATCH(
 // DELETE /api/lideres/:id
 export async function DELETE(
   _request: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const id = getIdFromParams(context.params);
+  const params = await context.params;
+  const id = getIdFromParams(params);
   if (!id) {
     return NextResponse.json({ error: "ID inválido" }, { status: 400 });
   }

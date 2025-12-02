@@ -1,7 +1,8 @@
 // app/api/asignaciones/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { AccionBitacora, Prisma, TipoEstatus } from "@prisma/client";
+import { Prisma, TipoEstatus } from "@prisma/client";
+import { AccionBitacora, SeccionBitacora } from "@/lib/bitacora";
 
 // GET /api/asignaciones
 // Filtros opcionales: ?usuarioId=&equipoId=&soloActivas=true
@@ -158,15 +159,18 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      await tx.bitacoraMovimiento.create({
+      await tx.bitacora.create({
         data: {
-          equipoId,
-          usuarioId,
           accion: AccionBitacora.ASIGNAR,
-          estatusOrigenId: estatusDisponible.id,
-          estatusDestinoId: estatusAsignado.id,
-          realizadoPorId: asignadoPor,
-          notas: notas ?? "Asignación creada",
+          seccion: SeccionBitacora.ASIGNACIONES,
+          elementoId: equipoId,
+          autorId: asignadoPor,
+          detalles: {
+            usuarioId,
+            estatusOrigenId: estatusDisponible.id,
+            estatusDestinoId: estatusAsignado.id,
+            notas: notas ?? "Asignación creada",
+          },
         },
       });
 

@@ -3,6 +3,12 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* GMAS Brand Colors */
+  --color-brand-cyan: #00B2E3;
+  --color-brand-dark-blue: #006989;
+  --color-brand-dark: #1F1D2B;
+  --color-background-light: #F0F8FF;
 }
 
 @theme inline {
@@ -10,12 +16,24 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --color-brand-cyan: var(--color-brand-cyan);
+  --color-brand-dark-blue: var(--color-brand-dark-blue);
+  --color-brand-dark: var(--color-brand-dark);
+  --color-background-light: var(--color-background-light);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+
+    /* Dark mode adjustments if needed, keeping brand colors consistent or slightly muted */
+    --color-brand-cyan: #00B2E3;
+    --color-brand-dark-blue: #4aa8c7;
+    /* Lighter for dark mode visibility */
+    --color-brand-dark: #e0e0e0;
+    --color-background-light: #121212;
   }
 }
 
@@ -23,4 +41,27 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+
+  /* Subtle animated background */
+  background: linear-gradient(-45deg,
+      var(--background),
+      var(--color-background-light),
+      #43caff,
+      var(--background));
+  background-size: 400% 400%;
+  animation: gradientBG 15s ease infinite;
+}
+
+@keyframes gradientBG {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
 }

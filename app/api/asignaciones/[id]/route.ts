@@ -1,7 +1,8 @@
 // app/api/asignaciones/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { AccionBitacora, Prisma, TipoEstatus } from "@prisma/client";
+import { Prisma, TipoEstatus } from "@prisma/client";
+import { AccionBitacora, SeccionBitacora } from "@/lib/bitacora";
 
 function getIdFromParams(params: { id?: string }): number | null {
   const raw = params.id;
@@ -14,9 +15,10 @@ function getIdFromParams(params: { id?: string }): number | null {
 // GET /api/asignaciones/:id
 export async function GET(
   _request: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const id = getIdFromParams(context.params);
+  const params = await context.params;
+  const id = getIdFromParams(params);
   if (!id) {
     return NextResponse.json(
       { error: "ID inválido" },
@@ -77,9 +79,10 @@ export async function GET(
 // }
 export async function PATCH(
   request: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const id = getIdFromParams(context.params);
+  const params = await context.params;
+  const id = getIdFromParams(params);
   if (!id) {
     return NextResponse.json(
       { error: "ID inválido" },
@@ -167,15 +170,19 @@ export async function PATCH(
         },
       });
 
-      await tx.bitacoraMovimiento.create({
+      await tx.bitacora.create({
         data: {
-          equipoId: asignacion.equipoId,
-          usuarioId: asignacion.usuarioId,
           accion: AccionBitacora.DEVOLVER,
-          estatusOrigenId: estatusAsignado.id,
-          estatusDestinoId: estatusDisponible.id,
-          realizadoPorId: realizadoPor,
-          notas: notas ?? "Equipo devuelto",
+          seccion: SeccionBitacora.ASIGNACIONES,
+          elementoId: asignacion.equipoId,
+          autorId: realizadoPor,
+          detalles: {
+            asignacionId: asignacion.id,
+            usuarioAnteriorId: asignacion.usuarioId,
+            estatusOrigenId: estatusAsignado.id,
+            estatusDestinoId: estatusDisponible.id,
+            notas: notas ?? "Equipo devuelto",
+          },
         },
       });
 
