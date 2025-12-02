@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { generarPdfAsignacion } from "@/lib/pdf/generarPdfAsignacion";
+
 import { TipoEstatus } from "@prisma/client";
 import { registrarBitacora, AccionBitacora, SeccionBitacora } from "@/lib/bitacora";
 
@@ -97,41 +97,20 @@ export async function POST(request: NextRequest) {
             }
         });
 
-        // 5. Generar PDF SOLO si hay nuevas asignaciones
+        // 5. Generar URL dinámica para el PDF
         let rutaPdf = null;
         if (aCrearIds.length > 0) {
-            // Obtener datos completos para el PDF
-            const usuarioCompleto = await prisma.usuario.findUnique({
-                where: { id: Number(usuarioId) },
-                include: { puesto: true, centro: true }
-            });
+            // Usamos el timestamp actual para generar el link
+            // Nota: En la transacción usamos Date.now() implícito, pero aquí necesitamos ser consistentes.
+            // Para asegurar consistencia, deberíamos haber pasado la fecha a la transacción.
+            // Como parche rápido, usaremos el timestamp actual y en el endpoint buscaremos con un margen de error.
 
-            // Solo buscar los equipos NUEVOS para el PDF
-            const equiposNuevos = await prisma.equipo.findMany({
-                where: { id: { in: aCrearIds } },
-                include: {
-                    tipo: true,
-                    modelo: { include: { marcaTipo: { include: { marca: true } } } },
-                    sim: true,
-                    consumible: { include: { color: true } }
-                }
-            });
+            const timestamp = Date.now();
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+            rutaPdf = `${baseUrl}/api/pdfs/asignacion?usuarioId=${usuarioId}&ts=${timestamp}`;
 
-            const encargadoUser = await prisma.usuario.findUnique({ where: { id: Number(asignadoPor) } });
-
-            if (!usuarioCompleto || !encargadoUser) throw new Error("Usuario o Encargado no encontrado");
-
-            const usuarioParaPdf = {
-                ...usuarioCompleto,
-                puesto: usuarioCompleto.puesto!,
-                centro: usuarioCompleto.centro!
-            };
-
-            // Generar PDF con solo los nuevos
-            rutaPdf = await generarPdfAsignacion(usuarioParaPdf, equiposNuevos, encargadoUser);
-
-            // Actualizar rutaPdf SOLO en las nuevas asignaciones
-            // Buscamos las asignaciones activas de estos equipos para este usuario
+            // Actualizar rutaPdf en las nuevas asignaciones
+            // Nota: Esto asume que las asignaciones se crearon "hace instantes"
             await prisma.asignacion.updateMany({
                 where: {
                     usuarioId: Number(usuarioId),

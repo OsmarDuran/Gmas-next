@@ -210,16 +210,12 @@ export async function POST(request: NextRequest) {
       return asignacionCompleta;
     });
 
-    // Generar PDF automáticamente después de crear la asignación
+    // Generar URL dinámica para el PDF
     if (resultado) {
       try {
-        const { generarPdfAsignacion } = await import('@/lib/pdf/generarPdfAsignacion');
-
-        const rutaPdf = await generarPdfAsignacion(
-          resultado.usuario,
-          [resultado.equipo],
-          resultado.asignador
-        );
+        const timestamp = Date.now();
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const rutaPdf = `${baseUrl}/api/pdfs/asignacion?usuarioId=${usuarioId}&ts=${timestamp}`;
 
         // Actualizar la asignación con la ruta del PDF
         await prisma.asignacion.update({
@@ -230,8 +226,7 @@ export async function POST(request: NextRequest) {
         // Agregar rutaPdf al resultado que se retorna
         resultado.rutaPdf = rutaPdf;
       } catch (pdfError) {
-        console.error('Error al generar PDF (la asignación se creó correctamente):', pdfError);
-        // No falla la asignación si falla el PDF
+        console.error('Error al generar URL de PDF:', pdfError);
       }
     }
 
