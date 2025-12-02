@@ -41,8 +41,8 @@ export async function generarPdfAsignacion(
     const filename = `resguardo-${usuario.id}-${fecha}-${Date.now()}.pdf`;
     const filepath = path.join(pdfDir, filename);
 
-    const fontRegular = 'C:\\Windows\\Fonts\\arial.ttf';
-    const fontBold = 'C:\\Windows\\Fonts\\arialbd.ttf';
+    const fontRegular = 'Helvetica';
+    const fontBold = 'Helvetica-Bold';
 
     const doc = new PDFDocument({
         margin: 50,
