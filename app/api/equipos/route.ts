@@ -12,6 +12,8 @@ export async function GET(request: NextRequest) {
   const tipoIdParam = searchParams.get("tipoId");
   const estatusIdParam = searchParams.get("estatusId");
   const ubicacionIdParam = searchParams.get("ubicacionId");
+  const marcaIdParam = searchParams.get("marcaId");
+  const modeloIdParam = searchParams.get("modeloId");
   const search = searchParams.get("search");
 
   // Paginación
@@ -35,6 +37,22 @@ export async function GET(request: NextRequest) {
     if (ubicacionIdParam) {
       const ubicacionId = Number(ubicacionIdParam);
       if (!isNaN(ubicacionId)) where.ubicacionId = ubicacionId;
+    }
+
+    if (marcaIdParam) {
+      const marcaId = Number(marcaIdParam);
+      if (!isNaN(marcaId)) {
+        where.modelo = {
+          marcaTipo: {
+            marcaId: marcaId
+          }
+        };
+      }
+    }
+
+    if (modeloIdParam) {
+      const modeloId = Number(modeloIdParam);
+      if (!isNaN(modeloId)) where.modeloId = modeloId;
     }
 
     if (search) {

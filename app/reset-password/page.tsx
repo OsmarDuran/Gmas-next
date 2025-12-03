@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, Lock, CheckCircle } from 'lucide-react';
+import WaterBackground from "@/app/components/WaterBackground";
 
 function ResetPasswordForm() {
     const searchParams = useSearchParams();
@@ -77,8 +78,8 @@ function ResetPasswordForm() {
 
             {message && (
                 <div className={`p-4 rounded-lg text-sm text-center mb-6 flex items-center justify-center gap-2 ${message.type === 'success'
-                        ? 'bg-green-50 text-green-700 border border-green-200'
-                        : 'bg-red-50 text-red-700 border border-red-200'
+                    ? 'bg-green-50 text-green-700 border border-green-200'
+                    : 'bg-red-50 text-red-700 border border-red-200'
                     }`}>
                     {message.type === 'success' && <CheckCircle className="w-4 h-4" />}
                     {message.text}
@@ -127,11 +128,15 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-950 px-4">
-            <div className="max-w-md w-full bg-white dark:bg-zinc-900 rounded-2xl shadow-xl p-8 border border-gray-100 dark:border-zinc-800">
-                <Suspense fallback={<div className="text-center p-4">Cargando...</div>}>
-                    <ResetPasswordForm />
-                </Suspense>
+        <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
+            <WaterBackground variant="deep" showSunkenShip />
+
+            <div className="relative z-10 w-full max-w-md px-4">
+                <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-white/20 dark:border-zinc-800/50">
+                    <Suspense fallback={<div className="text-center p-4">Cargando...</div>}>
+                        <ResetPasswordForm />
+                    </Suspense>
+                </div>
             </div>
         </div>
     );

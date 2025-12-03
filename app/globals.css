@@ -65,3 +65,168 @@ body {
     background-position: 0% 50%;
   }
 }
+
+/* Water Animations */
+@keyframes wave {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes rise {
+  0% {
+    bottom: -20px;
+    transform: translateX(0);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  50% {
+    transform: translateX(var(--drift-mid));
+  }
+
+  90% {
+    opacity: 1;
+  }
+
+  100% {
+    bottom: 120vh;
+    transform: translateX(var(--drift-end));
+    opacity: 0;
+  }
+}
+
+@keyframes bob {
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-10px) rotate(2deg);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes sail {
+  from {
+    transform: translateX(-120vw);
+  }
+
+  to {
+    transform: translateX(120vw);
+  }
+}
+
+.animate-sail {
+  animation: sail 4s linear forwards;
+}
+
+.animate-wave-slow {
+  animation: wave 15s ease-in-out infinite alternate;
+}
+
+.animate-wave-medium {
+  animation: wave 10s ease-in-out infinite alternate;
+}
+
+.animate-wave-fast {
+  animation: wave 7s ease-in-out infinite alternate;
+}
+
+.animate-rise {
+  animation: rise 15s infinite ease-in;
+}
+
+@keyframes spin-reverse {
+  from {
+    transform: rotate(360deg);
+  }
+
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin 20s linear infinite;
+}
+
+.animate-spin-reverse-slow {
+  animation: spin-reverse 25s linear infinite;
+}
+
+@keyframes submerge-water {
+  0% {
+    height: 50%;
+  }
+
+  100% {
+    height: 150%;
+  }
+}
+
+@keyframes submerge-darken {
+  0% {
+    filter: brightness(1);
+  }
+
+  100% {
+    filter: brightness(0);
+    background-color: #000;
+  }
+}
+
+.animate-submerge-water {
+  animation: submerge-water 3s ease-in-out forwards;
+}
+
+.animate-submerge-darken {
+  animation: submerge-darken 3s ease-in-out forwards;
+}
+
+@keyframes emerge-water {
+  0% {
+    height: 150%;
+  }
+
+  100% {
+    height: 50%;
+  }
+}
+
+@keyframes emerge-lighten {
+  0% {
+    filter: brightness(0);
+    background-color: #000;
+  }
+
+  100% {
+    filter: brightness(1);
+  }
+}
+
+.animate-emerge-water {
+  animation: emerge-water 3s ease-in-out forwards;
+}
+
+.animate-emerge-lighten {
+  animation: emerge-lighten 3s ease-in-out forwards;
+}
