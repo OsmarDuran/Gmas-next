@@ -1,33 +1,120 @@
 import { EquiposTable } from "@/app/components/equipos/EquiposTable";
+import { EquiposFilters } from "@/app/components/equipos/EquiposFilters";
 import { Pagination } from "@/app/components/Pagination";
-import { Search } from "lucide-react";
+import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
-async function getTipoSimId() {
-    try {
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const res = await fetch(`${baseUrl}/api/tipos-equipo`, { cache: 'force-cache' }); // Cachear esto es seguro
-        if (!res.ok) return 12; // Fallback
-        const tipos = await res.json();
-        const sim = tipos.find((t: any) => t.nombre.toLowerCase().includes('sim'));
-        return sim?.id || 12;
-    } catch {
-        return 12;
-    }
-}
+async function getSimsData(searchParams: Record<string, string>) {
+    const page = Number(searchParams.page || "1");
+    const limit = Number(searchParams.limit || "20");
+    const skip = (page - 1) * limit;
+    const search = searchParams.search || "";
 
-async function getSims(searchParams: Record<string, string>, tipoId: number) {
-    const params = new URLSearchParams(searchParams);
-    params.set('tipoId', tipoId.toString());
-    if (!params.has('page')) params.set('page', '1');
-    if (!params.has('limit')) params.set('limit', '20');
+    // Filtros adicionales
+    const estatusId = searchParams.estatusId ? Number(searchParams.estatusId) : undefined;
+    const ubicacionId = searchParams.ubicacionId ? Number(searchParams.ubicacionId) : undefined;
+    const marcaId = searchParams.marcaId ? Number(searchParams.marcaId) : undefined;
+    const modeloId = searchParams.modeloId ? Number(searchParams.modeloId) : undefined;
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const res = await fetch(`${baseUrl}/api/equipos?${params.toString()}`, {
-        cache: "no-store",
+    // 1. Obtener el ID del tipo 'SIM'
+    const tipoSim = await prisma.tipoEquipo.findFirst({
+        where: {
+            nombre: {
+                contains: "SIM",
+                mode: "insensitive",
+            },
+        },
     });
-    if (!res.ok) throw new Error("Error al cargar SIMs");
-    return res.json();
+
+    if (!tipoSim) {
+        return {
+            data: [],
+            meta: {
+                total: 0,
+                page,
+                limit,
+                totalPages: 0,
+            },
+        };
+    }
+
+    // 2. Construir filtro
+    const where: Prisma.EquipoWhereInput = {
+        tipoId: tipoSim.id,
+    };
+
+    if (estatusId) where.estatusId = estatusId;
+    if (ubicacionId) where.ubicacionId = ubicacionId;
+    if (modeloId) where.modeloId = modeloId;
+
+    // Si hay marca pero no modelo, filtrar por marca a través de modelo
+    if (marcaId && !modeloId) {
+        where.modelo = {
+            marcaTipo: {
+                marcaId: marcaId
+            }
+        };
+    }
+
+    if (search) {
+        where.OR = [
+            { numeroSerie: { contains: search, mode: "insensitive" } },
+            { notas: { contains: search, mode: "insensitive" } },
+            { sim: { numeroAsignado: { contains: search, mode: "insensitive" } } },
+            { sim: { imei: { contains: search, mode: "insensitive" } } },
+            { modelo: { nombre: { contains: search, mode: "insensitive" } } },
+        ];
+    }
+
+    // 3. Consultar equipos
+    const [total, equipos] = await prisma.$transaction([
+        prisma.equipo.count({ where }),
+        prisma.equipo.findMany({
+            where,
+            include: {
+                tipo: true,
+                modelo: {
+                    include: {
+                        marcaTipo: {
+                            include: {
+                                marca: true,
+                                tipo: true,
+                            },
+                        },
+                    },
+                },
+                ubicacion: true,
+                estatus: true,
+                sim: true,
+                consumible: {
+                    include: {
+                        color: true,
+                    },
+                },
+            },
+            skip,
+            take: limit,
+            orderBy: {
+                id: "desc",
+            },
+        }),
+    ]);
+
+    return {
+        data: equipos,
+        meta: {
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        },
+    };
 }
+
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+
+// ... (existing imports)
 
 export default async function SimsPage({
     searchParams,
@@ -35,26 +122,22 @@ export default async function SimsPage({
     searchParams: Promise<Record<string, string>>;
 }) {
     const params = await searchParams;
-    const tipoId = await getTipoSimId();
-    const { data: equipos, meta } = await getSims(params, tipoId);
+    const { data: equipos, meta } = await getSimsData(params);
 
     return (
         <div className="container mx-auto py-10">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-4 mb-6">
+                <Link
+                    href="/equipos"
+                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors text-gray-600 dark:text-gray-400"
+                >
+                    <ArrowLeft className="w-6 h-6" />
+                </Link>
                 <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Gestión de SIMs</h1>
             </div>
 
             <div className="mb-6">
-                <form className="relative">
-                    <input
-                        type="text"
-                        name="search"
-                        placeholder="Buscar por número, IMEI, notas..."
-                        defaultValue={params.search}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-zinc-900 dark:border-zinc-700 dark:text-white"
-                    />
-                    <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                </form>
+                <EquiposFilters excludeFilters={['tipo']} />
             </div>
 
             <EquiposTable equipos={equipos} />

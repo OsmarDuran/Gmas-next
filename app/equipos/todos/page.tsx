@@ -16,6 +16,13 @@ async function getEquipos(searchParams: Record<string, string>) {
     return res.json();
 }
 
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+
+// ... (existing imports)
+
+// ... (existing getEquipos function)
+
 export default async function TodosEquiposPage({
     searchParams,
 }: {
@@ -26,7 +33,13 @@ export default async function TodosEquiposPage({
 
     return (
         <div className="container mx-auto py-10">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-4 mb-6">
+                <Link
+                    href="/equipos"
+                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors text-gray-600 dark:text-gray-400"
+                >
+                    <ArrowLeft className="w-6 h-6" />
+                </Link>
                 <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Todos los Equipos</h1>
             </div>
 

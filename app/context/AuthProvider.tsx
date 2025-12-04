@@ -27,12 +27,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const pathname = usePathname();
 
     useEffect(() => {
-        const storedUser = localStorage.getItem("gmas_user");
-        console.log("AuthProvider mount. Stored user:", storedUser);
-        if (storedUser) {
-            setUser(JSON.parse(storedUser));
-        }
-        setLoading(false);
+        const checkSession = async () => {
+            try {
+                const res = await fetch("/api/auth/me");
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.user) {
+                        console.log("Session verified:", data.user);
+                        setUser(data.user);
+                        localStorage.setItem("gmas_user", JSON.stringify(data.user));
+                    } else {
+                        console.log("Session invalid (user null), clearing state");
+                        localStorage.removeItem("gmas_user");
+                        setUser(null);
+                    }
+                } else {
+                    console.log("Session invalid (status error), clearing state");
+                    localStorage.removeItem("gmas_user");
+                    setUser(null);
+                }
+            } catch (error) {
+                console.error("Error checking session:", error);
+                localStorage.removeItem("gmas_user");
+                setUser(null);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        checkSession();
     }, []);
 
     const login = (userData: User) => {

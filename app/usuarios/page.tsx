@@ -1,6 +1,7 @@
 import { UsuariosTable } from "@/app/components/usuarios/UsuariosTable";
+import { UsuariosFilters } from "@/app/components/usuarios/UsuariosFilters";
 import { Pagination } from "@/app/components/Pagination";
-import { Search, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 
 async function getUsuarios(searchParams: Record<string, string>) {
@@ -37,18 +38,7 @@ export default async function UsuariosPage({
                 </Link>
             </div>
 
-            <div className="mb-6">
-                <form className="relative">
-                    <input
-                        type="text"
-                        name="search"
-                        placeholder="Buscar por nombre, email..."
-                        defaultValue={params.search}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-zinc-900 dark:border-zinc-700 dark:text-white"
-                    />
-                    <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                </form>
-            </div>
+            <UsuariosFilters />
 
             <UsuariosTable usuarios={usuarios} />
 
